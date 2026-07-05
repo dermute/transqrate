@@ -39,24 +39,40 @@ prebuilt — nothing is compiled from source).
 # docker-compose.yml
 services:
   transqrate:
-    build: .                        # or: image: ghcr.io/dermute/transqrate:latest
+    image: ghcr.io/dermute/transqrate:latest
     container_name: transqrate
+    init: true
     ports:
       - "8585:8585"
     devices:
       - /dev/dri:/dev/dri           # Intel GPU for QSV
     volumes:
-      - ./config:/config
-      - /path/to/movies:/media/movies
+      - ./config:/config            # database, logs, temp files
+      - /path/to/movies:/media/movies      # a source folder
+      - /path/to/transcoded:/output        # optional output folder
     restart: unless-stopped
 ```
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 Open **http://localhost:8585**, add `/media/movies` as a source, pick a
 profile, press **Scan now**.
+
+### Source & output folders
+
+Mount every folder transQrate should see as a volume, then reference the
+*container* paths in the web UI. Each source folder has an optional output
+folder:
+
+- **No output folder** — transcode *in place*: the finished file replaces
+  the original (same location and name, container extension of the profile).
+- **With an output folder** (e.g. `/output`) — the source tree is mirrored
+  there (`/media/movies/A/b.mkv` → `/output/A/b.mkv`) and originals are
+  kept untouched. If an encode would end up larger than the source, the
+  original is *moved* to the output folder instead, so the output tree
+  always holds every processed file.
 
 ### Hardware requirements
 
