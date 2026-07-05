@@ -252,6 +252,7 @@ async function sourceDetails(src) {
   try { d = await api(`/api/sources/${src.id}/files`); }
   catch (e) { toast(e.message, true); slot.innerHTML = ""; return; }
   const active = ["pending", "analyzing", "running", "cancelling"];
+  const locked = f => active.includes(f.state) || f.state === "ignored";
   slot.innerHTML = `<div class="panel">
     <h3 class="panel-title">Files in ${esc(src.path)} (${d.files.length})</h3>
     <div class="tablewrap"><table>
@@ -259,12 +260,13 @@ async function sourceDetails(src) {
         <th>File</th><th>Size</th><th>Status</th><th>Saved</th></tr></thead>
       <tbody>${d.files.length ? d.files.map(f => `<tr>
         <td><input type="checkbox" class="file-check" value="${esc(f.path)}"
-             ${active.includes(f.state) ? "disabled" : ""}></td>
+             ${locked(f) ? "disabled" : ""}></td>
         <td class="wrap">${esc(f.rel)}</td>
         <td class="num">${fmtBytes(f.size)}</td>
-        <td>${badge(f.state)}</td>
+        <td>${badge(f.state)}${f.note ?
+          ` <span class="inline-note">${esc(f.note)}</span>` : ""}</td>
         <td class="num">${f.saved != null ? fmtBytes(f.saved) : "–"}</td>
-      </tr>`).join("") : `<tr><td colspan="5" class="empty">No media files found.</td></tr>`}
+      </tr>`).join("") : `<tr><td colspan="5" class="empty">No files found.</td></tr>`}
       </tbody></table></div>
     <div class="form-foot">
       <button class="primary" id="requeue-btn" disabled>Re-queue selected</button>

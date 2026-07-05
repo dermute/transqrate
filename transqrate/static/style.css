@@ -134,7 +134,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .badge.skipped { color: var(--warn); }
 .badge.cancelling { color: var(--warn); }
 .badge.new { color: var(--info); }
-.badge.tagged, .badge.queued, .badge.candidate { color: var(--ink-3); }
+.badge.tagged, .badge.queued, .badge.candidate, .badge.ignored { color: var(--ink-3); }
 
 /* --------------------------------------------------------------- buttons */
 button, .btn {

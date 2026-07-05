@@ -15,24 +15,34 @@ SKIP_STATES = {"queued", "done", "tagged", "skipped", "failed"}
 ACTIVE_STATES = ("pending", "analyzing", "running", "cancelling")
 
 
-def media_files(source: dict) -> list:
-    """All media files in a source folder, as (path, stat) pairs."""
+def iter_files(source: dict) -> list:
+    """All regular files in a source folder as (path, stat, ignore_reason)
+    triples; ignore_reason is None for files a scan would consider."""
     settings = db.get_settings()
     exts = {"." + e.strip().lower().lstrip(".")
             for e in settings.get("extensions", "").split(",") if e.strip()}
-    min_bytes = int(float(settings.get("min_file_mb", "10")) * 1024 * 1024)
+    min_mb = float(settings.get("min_file_mb", "10"))
     files = []
     for path in sorted(Path(source["path"]).rglob("*")):
         try:
-            if (not path.is_file() or path.suffix.lower() not in exts
-                    or path.name.startswith(".") or config.TMP_MARKER in path.name):
+            if (not path.is_file() or path.name.startswith(".")
+                    or config.TMP_MARKER in path.name):
                 continue
             st = path.stat()
-            if st.st_size >= min_bytes:
-                files.append((path, st))
+            reason = None
+            if path.suffix.lower() not in exts:
+                reason = f"extension {path.suffix or '(none)'} not in settings"
+            elif st.st_size < min_mb * 1024 * 1024:
+                reason = f"smaller than {min_mb:g} MB"
+            files.append((path, st, reason))
         except OSError:
             continue
     return files
+
+
+def media_files(source: dict) -> list:
+    """Media files a scan considers, as (path, stat) pairs."""
+    return [(p, st) for p, st, reason in iter_files(source) if reason is None]
 
 
 def scan_source(source: dict, require_stable: bool = False) -> dict:
@@ -82,17 +92,20 @@ def list_files(source: dict) -> list[dict]:
     """Per-file transcode state for the source details view."""
     root = Path(source["path"])
     out = []
-    for path, st in media_files(source):
-        rec = db.query_one("SELECT state FROM files WHERE path=?", (str(path),))
-        job = db.query_one(
-            "SELECT id, status, size_in, size_out FROM jobs"
-            " WHERE input_path=? ORDER BY id DESC LIMIT 1", (str(path),))
-        if job and job["status"] in ACTIVE_STATES:
-            state = job["status"]
-        elif rec:
-            state = rec["state"]
-        else:
-            state = "new"
+    for path, st, reason in iter_files(source):
+        state, note, job = "ignored", reason, None
+        if not reason:
+            rec = db.query_one("SELECT state FROM files WHERE path=?", (str(path),))
+            job = db.query_one(
+                "SELECT id, status, size_in, size_out FROM jobs"
+                " WHERE input_path=? ORDER BY id DESC LIMIT 1", (str(path),))
+            note = None
+            if job and job["status"] in ACTIVE_STATES:
+                state = job["status"]
+            elif rec:
+                state = rec["state"]
+            else:
+                state = "new"
         saved = None
         if job and job["size_in"] and job["size_out"]:
             saved = job["size_in"] - job["size_out"]
@@ -101,6 +114,7 @@ def list_files(source: dict) -> list[dict]:
             "rel": str(path.relative_to(root)),
             "size": st.st_size,
             "state": state,
+            "note": note,
             "job_id": job["id"] if job else None,
             "saved": saved,
         })
