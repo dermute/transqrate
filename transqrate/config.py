@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 
 CONFIG_DIR = Path(os.environ.get("CONFIG_DIR", "/config"))
-DB_PATH = Path(os.environ.get("DB_PATH", str(CONFIG_DIR / "transqode.db")))
+DB_PATH = Path(os.environ.get("DB_PATH", str(CONFIG_DIR / "transqrate.db")))
 LOG_DIR = Path(os.environ.get("LOG_DIR", str(CONFIG_DIR / "logs")))
 TMP_DIR = Path(os.environ.get("TMP_DIR", str(CONFIG_DIR / "tmp")))
-APP_LOG = LOG_DIR / "transqode.log"
+APP_LOG = LOG_DIR / "transqrate.log"
 
 FFMPEG = os.environ.get("FFMPEG_BIN", "ffmpeg")
 FFPROBE = os.environ.get("FFPROBE_BIN", "ffprobe")

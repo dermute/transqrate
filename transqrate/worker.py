@@ -13,7 +13,7 @@ from pathlib import Path
 
 from . import config, db, media, vmaf
 
-logger = logging.getLogger("transqode.worker")
+logger = logging.getLogger("transqrate.worker")
 
 
 class JobLog:
@@ -120,7 +120,7 @@ class Manager:
 
             info = media.ffprobe(input_path)
             if media.is_tagged(info) and not job.get("force"):
-                log("file already carries a TRANSQODE tag - skipping"
+                log("file already carries a TRANSQRATE tag - skipping"
                     " (re-queue it from the source details to force)")
                 self._finish(job_id, "skipped", input_path, note="already transcoded")
                 return

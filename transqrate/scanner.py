@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import config, db, media
 
-logger = logging.getLogger("transqode.scanner")
+logger = logging.getLogger("transqrate.scanner")
 
 SKIP_STATES = {"queued", "done", "tagged", "skipped"}
 

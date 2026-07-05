@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     input_path TEXT NOT NULL,
     output_path TEXT,
     status TEXT NOT NULL DEFAULT 'pending',        -- pending|analyzing|running|done|failed|cancelling|cancelled|skipped
-    force INTEGER NOT NULL DEFAULT 0,              -- re-encode even if TRANSQODE-tagged
+    force INTEGER NOT NULL DEFAULT 0,              -- re-encode even if TRANSQRATE-tagged
     progress REAL NOT NULL DEFAULT 0,
     fps REAL,
     speed TEXT,
@@ -121,11 +121,23 @@ def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _adopt_legacy_db() -> None:
+    """Rename a pre-rename transqode.db (plus WAL/SHM) to the new name."""
+    legacy = config.DB_PATH.parent / "transqode.db"
+    if config.DB_PATH.exists() or not legacy.exists():
+        return
+    for suffix in ("", "-wal", "-shm"):
+        old = legacy.parent / (legacy.name + suffix)
+        if old.exists():
+            old.rename(config.DB_PATH.parent / (config.DB_PATH.name + suffix))
+
+
 def connect() -> sqlite3.Connection:
     global _conn
     with _lock:
         if _conn is None:
             config.ensure_dirs()
+            _adopt_legacy_db()
             _conn = sqlite3.connect(str(config.DB_PATH), check_same_thread=False)
             _conn.row_factory = sqlite3.Row
             _conn.execute("PRAGMA journal_mode=WAL")

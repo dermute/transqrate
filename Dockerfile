@@ -1,4 +1,4 @@
-# Transqode - media transcoder with AV1 QSV + VMAF-targeted quality.
+# transQrate - media transcoder with AV1 QSV + VMAF-targeted quality.
 #
 # Built on top of linuxserver.io's ffmpeg image: ffmpeg (currently 8.x) compiled
 # with av1_qsv (Intel oneVPL), libvmaf, libopus and the Intel media drivers -
@@ -10,19 +10,19 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-pip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /opt/transqode/requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r /opt/transqode/requirements.txt
+COPY requirements.txt /opt/transqrate/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /opt/transqrate/requirements.txt
 
-COPY transqode /opt/transqode/transqode
+COPY transqrate /opt/transqrate/transqrate
 
 ENV CONFIG_DIR=/config \
     PYTHONUNBUFFERED=1 \
     PORT=8585
 
-WORKDIR /opt/transqode
+WORKDIR /opt/transqrate
 VOLUME /config
 EXPOSE 8585
 
 # the base image's entrypoint is ffmpeg itself - replace it with the app
 ENTRYPOINT []
-CMD ["python3", "-m", "uvicorn", "transqode.main:app", "--host", "0.0.0.0", "--port", "8585", "--no-access-log"]
+CMD ["python3", "-m", "uvicorn", "transqrate.main:app", "--host", "0.0.0.0", "--port", "8585", "--no-access-log"]

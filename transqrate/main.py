@@ -1,4 +1,4 @@
-"""Transqode HTTP API + web UI."""
+"""transQrate HTTP API + web UI."""
 
 import logging
 import os
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from . import __version__, config, db, media, scanner, worker
 
-logger = logging.getLogger("transqode")
+logger = logging.getLogger("transqrate")
 manager = worker.Manager()
 watcher = scanner.Watcher()
 
@@ -35,13 +35,13 @@ async def lifespan(_: FastAPI):
     db.init()
     manager.start()
     watcher.start()
-    logger.info("transqode %s ready", __version__)
+    logger.info("transqrate %s ready", __version__)
     yield
     watcher.stop()
     manager.stop()
 
 
-app = FastAPI(title="Transqode", version=__version__, lifespan=lifespan)
+app = FastAPI(title="transQrate", version=__version__, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
 
 
@@ -287,7 +287,7 @@ class RequeueIn(BaseModel):
 @app.post("/api/sources/{source_id}/requeue")
 def requeue_files(source_id: int, body: RequeueIn):
     """Reset files for transcoding and queue them, bypassing the
-    already-transcoded checks (both DB state and TRANSQODE tag)."""
+    already-transcoded checks (both DB state and TRANSQRATE tag)."""
     source = db.query_one("SELECT * FROM sources WHERE id=?", (source_id,))
     if not source:
         raise HTTPException(404, "source not found")

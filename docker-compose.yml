@@ -1,8 +1,8 @@
 services:
-  transqode:
+  transqrate:
     build: .
-    # image: ghcr.io/YOURNAME/transqode:latest
-    container_name: transqode
+    # image: ghcr.io/YOURNAME/transqrate:latest
+    container_name: transqrate
     init: true                     # reap ffmpeg children, forward signals
     ports:
       - "8585:8585"

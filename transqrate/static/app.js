@@ -1,4 +1,4 @@
-/* Transqode UI - dependency-free single page app */
+/* transQrate UI - dependency-free single page app */
 "use strict";
 
 const $main = document.getElementById("main");
@@ -205,7 +205,7 @@ async function sources() {
     <div id="src-files-slot"></div>
     <p class="inline-note">Paths are container paths - mount your media into the container
       (e.g. <code>/media/movies</code>). Leaving output empty transcodes in place and replaces
-      the original file. Finished files carry a <code>TRANSQODE</code> metadata tag and are
+      the original file. Finished files carry a <code>TRANSQRATE</code> metadata tag and are
       never picked up twice.</p>`;
   document.getElementById("add-src").onclick = () => sourceForm(null);
   document.querySelectorAll("[data-scan]").forEach(b => b.onclick = async () => {
@@ -392,7 +392,7 @@ async function profiles() {
     <h2>Transcoding profiles</h2>
     ${profs.map(profileCard).join("")}
     <p class="inline-note">ICQ (Intelligent Constant Quality) is QSV's quality mode - lower
-      values mean higher quality and bigger files. In VMAF mode, Transqode encodes short
+      values mean higher quality and bigger files. In VMAF mode, transQrate encodes short
       samples of each file at several ICQ values and binary-searches for the highest ICQ
       that still reaches your VMAF target (inspired by ab-av1). The shown command assumes
       an example file with a 5.1 and a stereo audio stream plus a text subtitle - audio
@@ -609,7 +609,7 @@ async function refreshLog(jump) {
   const lines = document.getElementById("log-lines")?.value ?? "2000";
   const url = which === "app" ? `/api/logs/app?tail=${lines}` : `/api/jobs/${which}/log?tail=${lines}`;
   document.getElementById("log-name").textContent =
-    which === "app" ? "transqode.log" : `job_${which}.log`;
+    which === "app" ? "transqrate.log" : `job_${which}.log`;
   try {
     const text = await api(url);
     const stick = jump || view.scrollTop + view.clientHeight >= view.scrollHeight - 40;
