@@ -71,6 +71,60 @@ def scan_source(source: dict, require_stable: bool = False) -> dict:
     return counters
 
 
+ACTIVE_STATES = ("pending", "analyzing", "running", "cancelling")
+
+
+def media_files(source: dict) -> list:
+    """All media files in a source folder (same filters as a scan)."""
+    settings = db.get_settings()
+    exts = {"." + e.strip().lower().lstrip(".")
+            for e in settings.get("extensions", "").split(",") if e.strip()}
+    min_bytes = int(float(settings.get("min_file_mb", "10")) * 1024 * 1024)
+    root = Path(source["path"])
+    files = []
+    for path in sorted(root.rglob("*")):
+        try:
+            if (not path.is_file() or path.suffix.lower() not in exts
+                    or path.name.startswith(".") or config.TMP_MARKER in path.name):
+                continue
+            st = path.stat()
+            if st.st_size < min_bytes:
+                continue
+            files.append((path, st))
+        except OSError:
+            continue
+    return files
+
+
+def list_files(source: dict) -> list[dict]:
+    """Per-file transcode state for the source details view."""
+    root = Path(source["path"])
+    out = []
+    for path, st in media_files(source):
+        rec = db.query_one("SELECT state FROM files WHERE path=?", (str(path),))
+        job = db.query_one(
+            "SELECT id, status, size_in, size_out FROM jobs"
+            " WHERE input_path=? ORDER BY id DESC LIMIT 1", (str(path),))
+        if job and job["status"] in ACTIVE_STATES:
+            state = job["status"]
+        elif rec:
+            state = rec["state"]
+        else:
+            state = "new"
+        saved = None
+        if job and job["size_in"] and job["size_out"]:
+            saved = job["size_in"] - job["size_out"]
+        out.append({
+            "path": str(path),
+            "rel": str(path.relative_to(root)),
+            "size": st.st_size,
+            "state": state,
+            "job_id": job["id"] if job else None,
+            "saved": saved,
+        })
+    return out
+
+
 class Watcher:
     def __init__(self):
         self._stop = threading.Event()

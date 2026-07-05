@@ -272,6 +272,41 @@ def scan_now(source_id: int):
     return scanner.scan_source(source, require_stable=False)
 
 
+@app.get("/api/sources/{source_id}/files")
+def source_files(source_id: int):
+    source = db.query_one("SELECT * FROM sources WHERE id=?", (source_id,))
+    if not source:
+        raise HTTPException(404, "source not found")
+    return {"files": scanner.list_files(source)}
+
+
+class RequeueIn(BaseModel):
+    paths: list[str]
+
+
+@app.post("/api/sources/{source_id}/requeue")
+def requeue_files(source_id: int, body: RequeueIn):
+    """Reset files for transcoding and queue them, bypassing the
+    already-transcoded checks (both DB state and TRANSQODE tag)."""
+    source = db.query_one("SELECT * FROM sources WHERE id=?", (source_id,))
+    if not source:
+        raise HTTPException(404, "source not found")
+    profile = db.query_one("SELECT * FROM profiles WHERE id=?", (source["profile_id"],))
+    if not profile:
+        raise HTTPException(409, "source has no valid profile")
+    root = Path(source["path"]).resolve()
+    queued = 0
+    for p in body.paths:
+        path = Path(p).resolve()
+        if root not in path.parents or not path.is_file():
+            continue
+        if db.create_job(source, profile, str(path), force=True):
+            st = path.stat()
+            db.set_file_state(str(path), "queued", size=st.st_size, mtime=st.st_mtime)
+            queued += 1
+    return {"queued": queued}
+
+
 # ---------------------------------------------------------------- settings
 
 @app.get("/api/settings")

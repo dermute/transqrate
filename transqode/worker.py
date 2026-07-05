@@ -119,8 +119,9 @@ class Manager:
                 raise media.MediaError("input file no longer exists")
 
             info = media.ffprobe(input_path)
-            if media.is_tagged(info):
-                log("file already carries a TRANSQODE tag - skipping")
+            if media.is_tagged(info) and not job.get("force"):
+                log("file already carries a TRANSQODE tag - skipping"
+                    " (re-queue it from the source details to force)")
                 self._finish(job_id, "skipped", input_path, note="already transcoded")
                 return
             if not media.has_video(info):

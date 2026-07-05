@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     input_path TEXT NOT NULL,
     output_path TEXT,
     status TEXT NOT NULL DEFAULT 'pending',        -- pending|analyzing|running|done|failed|cancelling|cancelled|skipped
+    force INTEGER NOT NULL DEFAULT 0,              -- re-encode even if TRANSQODE-tagged
     progress REAL NOT NULL DEFAULT 0,
     fps REAL,
     speed TEXT,
@@ -132,20 +133,22 @@ def connect() -> sqlite3.Connection:
         return _conn
 
 
-MIGRATIONS = {
-    "audio_max_channels": "ALTER TABLE profiles ADD COLUMN audio_max_channels"
-                          " INTEGER NOT NULL DEFAULT 0",
-    "max_resolution": "ALTER TABLE profiles ADD COLUMN max_resolution"
-                      " TEXT NOT NULL DEFAULT 'source'",
-}
+MIGRATIONS = [
+    ("profiles", "audio_max_channels",
+     "ALTER TABLE profiles ADD COLUMN audio_max_channels INTEGER NOT NULL DEFAULT 0"),
+    ("profiles", "max_resolution",
+     "ALTER TABLE profiles ADD COLUMN max_resolution TEXT NOT NULL DEFAULT 'source'"),
+    ("jobs", "force",
+     "ALTER TABLE jobs ADD COLUMN force INTEGER NOT NULL DEFAULT 0"),
+]
 
 
 def init() -> None:
     with _lock:
         conn = connect()
         conn.executescript(SCHEMA)
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(profiles)")}
-        for col, ddl in MIGRATIONS.items():
+        for table, col, ddl in MIGRATIONS:
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
             if col not in cols:
                 conn.execute(ddl)
         for k, v in SETTINGS_DEFAULTS.items():
@@ -227,7 +230,8 @@ def set_settings(values: dict) -> None:
 
 # ---------------------------------------------------------------- jobs
 
-def create_job(source: dict, profile: dict, input_path: str) -> int | None:
+def create_job(source: dict, profile: dict, input_path: str,
+               force: bool = False) -> int | None:
     """Queue a job unless one is already pending/active for this path."""
     with _lock:
         existing = query_one(
@@ -238,9 +242,10 @@ def create_job(source: dict, profile: dict, input_path: str) -> int | None:
         if existing:
             return None
         job_id = execute(
-            "INSERT INTO jobs(source_id, profile_name, profile_json, input_path, status, created_at)"
-            " VALUES(?,?,?,?, 'pending', ?)",
-            (source["id"], profile["name"], json.dumps(profile), input_path, now()),
+            "INSERT INTO jobs(source_id, profile_name, profile_json, input_path,"
+            " status, force, created_at) VALUES(?,?,?,?, 'pending', ?, ?)",
+            (source["id"], profile["name"], json.dumps(profile), input_path,
+             int(force), now()),
         )
         execute(
             "INSERT INTO files(path, state, job_id, updated_at) VALUES(?, 'queued', ?, ?)"

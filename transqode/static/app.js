@@ -202,6 +202,7 @@ async function sources() {
       <tbody>${srcs.length ? srcs.map(sourceRow).join("") :
         `<tr><td colspan="8" class="empty">No source folders yet. Add one to get started.</td></tr>`}
       </tbody></table></div>
+    <div id="src-files-slot"></div>
     <p class="inline-note">Paths are container paths - mount your media into the container
       (e.g. <code>/media/movies</code>). Leaving output empty transcodes in place and replaces
       the original file. Finished files carry a <code>TRANSQODE</code> metadata tag and are
@@ -215,6 +216,8 @@ async function sources() {
       route();
     } catch (e) { toast(e.message, true); b.disabled = false; }
   });
+  document.querySelectorAll("[data-files]").forEach(b => b.onclick = () =>
+    sourceDetails(srcs.find(s => s.id == b.dataset.files)));
   document.querySelectorAll("[data-edit-src]").forEach(b => b.onclick = () =>
     sourceForm(srcs.find(s => s.id == b.dataset.editSrc)));
   document.querySelectorAll("[data-del-src]").forEach(b => b.onclick = async () => {
@@ -235,9 +238,64 @@ function sourceRow(s) {
     <td class="num">${s.stats.active}</td>
     <td class="actions">
       <button class="small primary" data-scan="${s.id}">Scan now</button>
+      <button class="small" data-files="${s.id}">Details</button>
       <button class="small" data-edit-src="${s.id}">Edit</button>
       <button class="small danger" data-del-src="${s.id}">Delete</button>
     </td></tr>`;
+}
+
+async function sourceDetails(src) {
+  const slot = document.getElementById("src-files-slot");
+  slot.innerHTML = `<div class="panel"><h3 class="panel-title">Files in ${esc(src.path)}</h3>
+    <div class="empty">Loading&hellip;</div></div>`;
+  let d;
+  try { d = await api(`/api/sources/${src.id}/files`); }
+  catch (e) { toast(e.message, true); slot.innerHTML = ""; return; }
+  const active = ["pending", "analyzing", "running", "cancelling"];
+  slot.innerHTML = `<div class="panel">
+    <h3 class="panel-title">Files in ${esc(src.path)} (${d.files.length})</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th><input type="checkbox" id="files-all" title="select all"></th>
+        <th>File</th><th>Size</th><th>Status</th><th>Saved</th></tr></thead>
+      <tbody>${d.files.length ? d.files.map(f => `<tr>
+        <td><input type="checkbox" class="file-check" value="${esc(f.path)}"
+             ${active.includes(f.state) ? "disabled" : ""}></td>
+        <td class="wrap">${esc(f.rel)}</td>
+        <td class="num">${fmtBytes(f.size)}</td>
+        <td>${badge(f.state)}</td>
+        <td class="num">${f.saved != null ? fmtBytes(f.saved) : "–"}</td>
+      </tr>`).join("") : `<tr><td colspan="5" class="empty">No media files found.</td></tr>`}
+      </tbody></table></div>
+    <div class="form-foot">
+      <button class="primary" id="requeue-btn" disabled>Re-queue selected</button>
+      <button id="files-close">Close</button>
+      <span class="hint">Re-queueing resets a file and transcodes it again,
+        even if it is already tagged as done.</span>
+    </div></div>`;
+  const checks = [...slot.querySelectorAll(".file-check:not(:disabled)")];
+  const btn = slot.querySelector("#requeue-btn");
+  const sync = () => {
+    const n = checks.filter(c => c.checked).length;
+    btn.disabled = !n;
+    btn.textContent = n ? `Re-queue selected (${n})` : "Re-queue selected";
+  };
+  checks.forEach(c => c.onchange = sync);
+  slot.querySelector("#files-all").onchange = ev => {
+    checks.forEach(c => { c.checked = ev.target.checked; });
+    sync();
+  };
+  slot.querySelector("#files-close").onclick = () => { slot.innerHTML = ""; };
+  btn.onclick = async () => {
+    const paths = checks.filter(c => c.checked).map(c => c.value);
+    btn.disabled = true;
+    try {
+      const r = await api(`/api/sources/${src.id}/requeue`, {
+        method: "POST", body: JSON.stringify({ paths }),
+      });
+      toast(`${r.queued} file(s) queued for transcoding`);
+      sourceDetails(src);
+    } catch (e) { toast(e.message, true); btn.disabled = false; }
+  };
 }
 
 function sourceForm(src) {
