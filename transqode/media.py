@@ -57,12 +57,19 @@ def subtitle_streams(info: dict) -> list[dict]:
     return [s for s in info.get("streams", []) if s.get("codec_type") == "subtitle"]
 
 
+def qsv_device_args(settings: dict | None) -> list[str]:
+    """-qsv_device pins QSV to one render node on multi-GPU hosts."""
+    dev = ((settings or {}).get("qsv_device") or "").strip()
+    return ["-qsv_device", dev] if dev else []
+
+
 def build_command(input_path: Path, output_path: Path, profile: dict,
-                  icq: int, info: dict) -> list[str]:
+                  icq: int, info: dict, settings: dict | None = None) -> list[str]:
     """Full transcode command: AV1 QSV video (ICQ mode via -global_quality),
     Opus audio at N kbps per channel keeping the channel count, subs copied,
     and a TRANSQODE tag so finished files are recognizable."""
     cmd = [config.FFMPEG, "-y", "-hide_banner", "-nostdin", "-loglevel", "info",
+           *qsv_device_args(settings),
            "-probesize", "100M", "-analyzeduration", "200M",
            "-i", str(input_path),
            "-map", "0:v:0", "-map", "0:a?", "-map", "0:s?", "-dn",

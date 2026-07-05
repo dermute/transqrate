@@ -62,7 +62,8 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
             scores, in_bytes, out_bytes = [], 0, 0
             for i, sample in enumerate(samples):
                 enc = workdir / f"enc_{i}_q{q}.mkv"
-                cmd = [config.FFMPEG, "-y", "-hide_banner", "-nostdin", "-i", str(sample),
+                cmd = [config.FFMPEG, "-y", "-hide_banner", "-nostdin",
+                       *media.qsv_device_args(settings), "-i", str(sample),
                        *media.video_args(profile, q), "-an", "-sn", "-dn", str(enc)]
                 proc = media.run_quiet(cmd)
                 if proc.returncode != 0 or not enc.exists():

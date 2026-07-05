@@ -146,7 +146,7 @@ class Manager:
                 raise vmaf.Cancelled()
 
             db.update_job(job_id, status="running", progress=0)
-            cmd = media.build_command(input_path, tmp_out, profile, icq, info)
+            cmd = media.build_command(input_path, tmp_out, profile, icq, info, settings)
 
             last_write = 0.0
 

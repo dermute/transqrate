@@ -65,6 +65,10 @@ AV1 hardware encoding (`av1_qsv`) needs an Intel GPU with an AV1 encoder:
 Older iGPUs (UHD 6xx/7xx) can decode AV1 but not encode it — use a profile
 with `hevc_qsv` instead. The container needs access to `/dev/dri`.
 
+**Multiple GPUs** (e.g. iGPU + Arc): map the render node you want at its
+*original* path (renaming breaks libva's sysfs lookup) and point the
+`qsv_device` setting (Settings page) at it, e.g. `/dev/dri/renderD129`.
+
 ## How VMAF matching works
 
 For a profile in *VMAF target* mode, each file first goes through an

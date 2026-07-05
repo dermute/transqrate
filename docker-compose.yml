@@ -7,6 +7,10 @@ services:
       - "8585:8585"
     devices:
       - /dev/dri:/dev/dri          # Intel GPU for QSV hardware encoding
+      # Multi-GPU host? Pass the node at its ORIGINAL path (never rename it,
+      # libva resolves the name via sysfs) and set the "qsv_device" setting
+      # in the UI, e.g.:
+      # - /dev/dri/renderD129:/dev/dri/renderD129
     volumes:
       - ./config:/config           # SQLite database, logs, temp files
       - /path/to/movies:/media/movies

@@ -89,6 +89,7 @@ SETTINGS_DEFAULTS = {
     "vmaf_min_samples": "2",
     "vmaf_max_samples": "6",
     "skip_if_larger": "1",
+    "qsv_device": "",
 }
 
 SETTINGS_META = {
@@ -102,6 +103,7 @@ SETTINGS_META = {
     "vmaf_min_samples": "VMAF search: minimum sample clips per file",
     "vmaf_max_samples": "VMAF search: maximum sample clips per file",
     "skip_if_larger": "Discard result and keep original if output is larger (1/0)",
+    "qsv_device": "DRM render node for QSV, e.g. /dev/dri/renderD129 (empty = auto)",
 }
 
 
