@@ -108,7 +108,9 @@ class Manager:
         input_path = Path(job["input_path"])
         settings = db.get_settings()
         profile = json.loads(job["profile_json"])
-        cancelled = lambda: db.job_status(job_id) == "cancelling"
+        def cancelled() -> bool:
+            return db.job_status(job_id) == "cancelling"
+
         tmp_out: Path | None = None
         try:
             log(f"job {job_id}: {input_path}")
@@ -122,7 +124,8 @@ class Manager:
             if media.is_tagged(info) and not job.get("force"):
                 log("file already carries a TRANSQRATE tag - skipping"
                     " (re-queue it from the source details to force)")
-                self._finish(job_id, "skipped", input_path, note="already transcoded")
+                self._finish(job_id, "skipped", input_path,
+                             note="already transcoded", file_state="tagged")
                 return
             if not media.has_video(info):
                 raise media.MediaError("no video stream found")
@@ -234,11 +237,11 @@ class Manager:
             log.close()
 
     def _finish(self, job_id: int, status: str, input_path: Path,
-                size_in: int | None = None, note: str = "") -> None:
+                size_in: int | None = None, note: str = "",
+                file_state: str = "skipped") -> None:
         db.update_job(job_id, status=status, finished_at=db.now(),
                       size_in=size_in, error=note or None)
-        db.set_file_state(str(input_path), "tagged" if note == "already transcoded" else "skipped",
-                          job_id)
+        db.set_file_state(str(input_path), file_state, job_id)
 
     @staticmethod
     def _output_path(input_path: Path, source: dict | None, profile: dict) -> Path:

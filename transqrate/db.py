@@ -121,23 +121,11 @@ def now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _adopt_legacy_db() -> None:
-    """Rename a pre-rename transqode.db (plus WAL/SHM) to the new name."""
-    legacy = config.DB_PATH.parent / "transqode.db"
-    if config.DB_PATH.exists() or not legacy.exists():
-        return
-    for suffix in ("", "-wal", "-shm"):
-        old = legacy.parent / (legacy.name + suffix)
-        if old.exists():
-            old.rename(config.DB_PATH.parent / (config.DB_PATH.name + suffix))
-
-
 def connect() -> sqlite3.Connection:
     global _conn
     with _lock:
         if _conn is None:
             config.ensure_dirs()
-            _adopt_legacy_db()
             _conn = sqlite3.connect(str(config.DB_PATH), check_same_thread=False)
             _conn.row_factory = sqlite3.Row
             _conn.execute("PRAGMA journal_mode=WAL")
@@ -145,24 +133,10 @@ def connect() -> sqlite3.Connection:
         return _conn
 
 
-MIGRATIONS = [
-    ("profiles", "audio_max_channels",
-     "ALTER TABLE profiles ADD COLUMN audio_max_channels INTEGER NOT NULL DEFAULT 0"),
-    ("profiles", "max_resolution",
-     "ALTER TABLE profiles ADD COLUMN max_resolution TEXT NOT NULL DEFAULT 'source'"),
-    ("jobs", "force",
-     "ALTER TABLE jobs ADD COLUMN force INTEGER NOT NULL DEFAULT 0"),
-]
-
-
 def init() -> None:
     with _lock:
         conn = connect()
         conn.executescript(SCHEMA)
-        for table, col, ddl in MIGRATIONS:
-            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
-            if col not in cols:
-                conn.execute(ddl)
         for k, v in SETTINGS_DEFAULTS.items():
             conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
         # abandon jobs that were mid-flight when the app was stopped

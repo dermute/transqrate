@@ -9,8 +9,6 @@ from pathlib import Path
 from . import config
 
 TAG_KEY = "TRANSQRATE"
-# files tagged by older versions (project was called Transqode) stay recognized
-KNOWN_TAG_KEYS = {"TRANSQRATE", "TRANSQODE"}
 
 # channel layouts libopus accepts (largest first); aformat converts
 # e.g. 5.1(side) -> 5.1, and capping the list forces a proper downmix
@@ -62,7 +60,7 @@ def duration_s(info: dict) -> float:
 
 def is_tagged(info: dict) -> bool:
     tags = info.get("format", {}).get("tags", {}) or {}
-    return any(k.upper() in KNOWN_TAG_KEYS for k in tags)
+    return any(k.upper() == TAG_KEY for k in tags)
 
 
 def has_video(info: dict) -> bool:

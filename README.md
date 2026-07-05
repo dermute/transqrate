@@ -125,9 +125,6 @@ Subtitles, chapters, metadata and (for mkv) font attachments are carried over;
   scanned; unstable (still copying) files wait one more round.
 - **Crash safety**: encodes write to hidden `.…tqtmp.…` temp files that are
   atomically renamed on success and ignored by the scanner.
-- **Upgrading from Transqode** (this project's former name): an existing
-  `transqode.db` is adopted automatically, and files tagged `TRANSQODE` by
-  older versions stay recognized as already transcoded.
 
 ## Development
 

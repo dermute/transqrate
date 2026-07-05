@@ -11,39 +11,46 @@ from . import config, db, media
 
 logger = logging.getLogger("transqrate.scanner")
 
-SKIP_STATES = {"queued", "done", "tagged", "skipped"}
+SKIP_STATES = {"queued", "done", "tagged", "skipped", "failed"}
+ACTIVE_STATES = ("pending", "analyzing", "running", "cancelling")
 
 
-def scan_source(source: dict, require_stable: bool = False) -> dict:
-    """Walk one source folder and queue eligible files. Returns counters."""
+def media_files(source: dict) -> list:
+    """All media files in a source folder, as (path, stat) pairs."""
     settings = db.get_settings()
     exts = {"." + e.strip().lower().lstrip(".")
             for e in settings.get("extensions", "").split(",") if e.strip()}
     min_bytes = int(float(settings.get("min_file_mb", "10")) * 1024 * 1024)
+    files = []
+    for path in sorted(Path(source["path"]).rglob("*")):
+        try:
+            if (not path.is_file() or path.suffix.lower() not in exts
+                    or path.name.startswith(".") or config.TMP_MARKER in path.name):
+                continue
+            st = path.stat()
+            if st.st_size >= min_bytes:
+                files.append((path, st))
+        except OSError:
+            continue
+    return files
+
+
+def scan_source(source: dict, require_stable: bool = False) -> dict:
+    """Walk one source folder and queue eligible files. Returns counters."""
     profile = db.query_one("SELECT * FROM profiles WHERE id=?", (source["profile_id"],))
-    root = Path(source["path"])
     counters = {"queued": 0, "skipped": 0, "waiting": 0, "errors": 0}
-    if not profile or not root.is_dir():
+    if not profile or not Path(source["path"]).is_dir():
         counters["errors"] += 1
         logger.warning("scan aborted for source %s: missing profile or folder", source["path"])
         return counters
 
-    for path in sorted(root.rglob("*")):
+    for path, st in media_files(source):
         try:
-            if not path.is_file() or path.suffix.lower() not in exts:
-                continue
-            if path.name.startswith(".") or config.TMP_MARKER in path.name:
-                continue
-            st = path.stat()
-            if st.st_size < min_bytes:
-                continue
             known = db.query_one("SELECT * FROM files WHERE path=?", (str(path),))
             unchanged = known and known["size"] == st.st_size and known["mtime"] == st.st_mtime
             if unchanged and known["state"] in SKIP_STATES:
+                # failed files are retried from the dashboard, not by rescanning
                 counters["skipped"] += 1
-                continue
-            if unchanged and known["state"] == "failed":
-                counters["skipped"] += 1  # retry manually from the dashboard
                 continue
             if require_stable and not unchanged:
                 # first sighting (or still growing): remember it, queue next round
@@ -69,31 +76,6 @@ def scan_source(source: dict, require_stable: bool = False) -> dict:
             counters["errors"] += 1
     logger.info("scanned %s: %s", source["path"], counters)
     return counters
-
-
-ACTIVE_STATES = ("pending", "analyzing", "running", "cancelling")
-
-
-def media_files(source: dict) -> list:
-    """All media files in a source folder (same filters as a scan)."""
-    settings = db.get_settings()
-    exts = {"." + e.strip().lower().lstrip(".")
-            for e in settings.get("extensions", "").split(",") if e.strip()}
-    min_bytes = int(float(settings.get("min_file_mb", "10")) * 1024 * 1024)
-    root = Path(source["path"])
-    files = []
-    for path in sorted(root.rglob("*")):
-        try:
-            if (not path.is_file() or path.suffix.lower() not in exts
-                    or path.name.startswith(".") or config.TMP_MARKER in path.name):
-                continue
-            st = path.stat()
-            if st.st_size < min_bytes:
-                continue
-            files.append((path, st))
-        except OSError:
-            continue
-    return files
 
 
 def list_files(source: dict) -> list[dict]:
