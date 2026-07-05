@@ -364,7 +364,11 @@ function profileCard(p) {
     <div class="meta">
       <span>${esc(p.video_codec)} (${esc(p.preset)})</span>
       <span>${esc(quality)}</span>
-      <span>${esc(audio)}</span>
+      <span>${p.max_resolution && p.max_resolution !== "source" ?
+        "&le; " + esc(p.max_resolution) : "source resolution"}</span>
+      <span>${esc(audio)}${p.audio_max_channels ? `, max ${
+        { 8: "7.1", 7: "6.1", 6: "5.1", 2: "stereo", 1: "mono" }[p.audio_max_channels] ||
+        p.audio_max_channels + "ch"}` : ""}</span>
       <span>${esc(p.container)}</span>
     </div>
     <pre class="cmdline">${esc(p.command || "")}</pre>
@@ -376,8 +380,13 @@ function profileForm(prof) {
   const p = prof || {
     name: "", video_codec: "av1_qsv", preset: "veryslow", quality_mode: "icq",
     icq: 22, vmaf_target: 95, audio_codec: "libopus", audio_kbps_per_channel: 64,
+    audio_max_channels: 0, max_resolution: "source",
     container: "mkv", extra_video_args: "",
   };
+  const resolutions = [["source", "Keep source"], ["2160p", "4K (2160p)"],
+    ["1080p", "1080p"], ["720p", "720p"], ["480p", "480p"]];
+  const channelCaps = [[0, "Keep all channels"], [8, "max 7.1"], [6, "max 5.1"],
+    [2, "stereo"], [1, "mono"]];
   const presets = ["veryslow", "slower", "slow", "medium", "fast", "faster", "veryfast"];
   slot.innerHTML = `<form class="panel" id="prof-form">
     <div class="grid">
@@ -397,6 +406,10 @@ function profileForm(prof) {
         <input type="number" name="icq" min="1" max="51" value="${p.icq}"></label>
       <label class="field"><span>VMAF target (vmaf mode)</span>
         <input type="number" name="vmaf_target" min="1" max="100" step="0.5" value="${p.vmaf_target}"></label>
+      <label class="field"><span>Output resolution (downscale only)</span>
+        <select name="max_resolution">${resolutions.map(([v, t]) =>
+          `<option value="${v}" ${v === p.max_resolution ? "selected" : ""}>${t}</option>`).join("")}
+        </select></label>
       <label class="field"><span>Audio</span>
         <select name="audio_codec">
           <option value="libopus" ${p.audio_codec === "libopus" ? "selected" : ""}>Opus (re-encode)</option>
@@ -404,6 +417,10 @@ function profileForm(prof) {
         </select></label>
       <label class="field"><span>Audio kbps per channel</span>
         <input type="number" name="audio_kbps_per_channel" min="16" max="512" value="${p.audio_kbps_per_channel}"></label>
+      <label class="field"><span>Audio channel limit (downmix only)</span>
+        <select name="audio_max_channels">${channelCaps.map(([v, t]) =>
+          `<option value="${v}" ${v === (p.audio_max_channels || 0) ? "selected" : ""}>${t}</option>`).join("")}
+        </select></label>
       <label class="field"><span>Container</span>
         <select name="container">
           <option ${p.container === "mkv" ? "selected" : ""}>mkv</option>
@@ -435,6 +452,8 @@ function profileForm(prof) {
       vmaf_target: Number(f.get("vmaf_target")) || 95,
       audio_codec: f.get("audio_codec"),
       audio_kbps_per_channel: Number(f.get("audio_kbps_per_channel")) || 64,
+      audio_max_channels: Number(f.get("audio_max_channels")) || 0,
+      max_resolution: f.get("max_resolution"),
       container: f.get("container"),
       extra_video_args: f.get("extra_video_args").trim(),
     };
@@ -458,19 +477,7 @@ function profileForm(prof) {
   document.getElementById("prof-cancel").onclick = () => (slot.innerHTML = "");
   form.onsubmit = async ev => {
     ev.preventDefault();
-    const f = new FormData(ev.target);
-    const body = {
-      name: f.get("name").trim(),
-      video_codec: f.get("video_codec").trim(),
-      preset: f.get("preset"),
-      quality_mode: f.get("quality_mode"),
-      icq: Number(f.get("icq")),
-      vmaf_target: Number(f.get("vmaf_target")),
-      audio_codec: f.get("audio_codec"),
-      audio_kbps_per_channel: Number(f.get("audio_kbps_per_channel")),
-      container: f.get("container"),
-      extra_video_args: f.get("extra_video_args").trim(),
-    };
+    const body = { ...readForm(), name: new FormData(form).get("name").trim() };
     try {
       await api(prof ? `/api/profiles/${prof.id}` : "/api/profiles", {
         method: prof ? "PUT" : "POST", body: JSON.stringify(body),

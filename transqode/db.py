@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     vmaf_target REAL NOT NULL DEFAULT 95.0,
     audio_codec TEXT NOT NULL DEFAULT 'libopus',   -- 'libopus' | 'copy'
     audio_kbps_per_channel INTEGER NOT NULL DEFAULT 64,
+    audio_max_channels INTEGER NOT NULL DEFAULT 0, -- 0 = keep all
+    max_resolution TEXT NOT NULL DEFAULT 'source', -- source|480p|720p|1080p|2160p
     container TEXT NOT NULL DEFAULT 'mkv',
     extra_video_args TEXT NOT NULL DEFAULT '',
     created_at TEXT,
@@ -130,10 +132,22 @@ def connect() -> sqlite3.Connection:
         return _conn
 
 
+MIGRATIONS = {
+    "audio_max_channels": "ALTER TABLE profiles ADD COLUMN audio_max_channels"
+                          " INTEGER NOT NULL DEFAULT 0",
+    "max_resolution": "ALTER TABLE profiles ADD COLUMN max_resolution"
+                      " TEXT NOT NULL DEFAULT 'source'",
+}
+
+
 def init() -> None:
     with _lock:
         conn = connect()
         conn.executescript(SCHEMA)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(profiles)")}
+        for col, ddl in MIGRATIONS.items():
+            if col not in cols:
+                conn.execute(ddl)
         for k, v in SETTINGS_DEFAULTS.items():
             conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
         # abandon jobs that were mid-flight when the app was stopped

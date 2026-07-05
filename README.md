@@ -96,7 +96,9 @@ Settings page. Cost: roughly 4–6 short sample encodes + VMAF runs per file.
 | Quality mode | **Fixed ICQ** or **VMAF target** |
 | ICQ | QSV Intelligent Constant Quality, lower = better (default 22) |
 | VMAF target | e.g. 95 — auto-derives the ICQ per file |
+| Output resolution | keep source, or downscale to 480p/720p/1080p/4K (never upscales; width-based so scope content maps correctly) |
 | Audio | Opus at N kbps × channel count (channels preserved), or copy |
+| Audio channel limit | optional downmix cap, e.g. *max 5.1* turns 7.1 into 5.1 but leaves stereo untouched |
 | Container | mkv (recommended) or mp4 |
 | Extra video args | appended verbatim, e.g. `-look_ahead_depth 40` |
 

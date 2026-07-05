@@ -43,6 +43,15 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
     # roughly one sample per 8 minutes, clamped
     n = max(n_min, min(n_max, int(duration // 480) or 1))
 
+    # if the profile downscales, the distorted clip must be scaled back to
+    # source dimensions for scoring (the score then includes scaling loss)
+    ref_dims = None
+    if (profile.get("max_resolution") or "source") != "source":
+        v = next((s for s in info.get("streams", [])
+                  if s.get("codec_type") == "video"), {})
+        if v.get("width") and v.get("height"):
+            ref_dims = (int(v["width"]), int(v["height"]))
+
     workdir = config.TMP_DIR / f"vmaf_job_{job_id}"
     workdir.mkdir(parents=True, exist_ok=True)
     try:
@@ -74,7 +83,7 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
                         f"sample encode failed at ICQ {q}: {proc.stderr.strip()[-800:]}")
                 log(f"    sample {i + 1}/{len(samples)}: encoded "
                     f"({enc.stat().st_size:,} B), computing VMAF...")
-                score = _vmaf_score(enc, sample)
+                score = _vmaf_score(enc, sample, ref_dims)
                 log(f"    sample {i + 1}/{len(samples)}: VMAF {score:.2f}")
                 scores.append(score)
                 in_bytes += sample.stat().st_size
@@ -133,12 +142,16 @@ def _extract_samples(input_path: Path, workdir: Path, duration: float,
     return samples
 
 
-def _vmaf_score(distorted: Path, reference: Path) -> float:
+def _vmaf_score(distorted: Path, reference: Path,
+                ref_dims: tuple[int, int] | None = None) -> float:
     threads = os.cpu_count() or 4
+    d_chain = "setpts=PTS-STARTPTS"
+    if ref_dims:
+        d_chain += f",scale={ref_dims[0]}:{ref_dims[1]}:flags=bicubic"
     cmd = [config.FFMPEG, "-hide_banner", "-nostdin",
            "-i", str(distorted), "-i", str(reference),
            "-lavfi",
-           f"[0:v]setpts=PTS-STARTPTS[d];[1:v]setpts=PTS-STARTPTS[r];"
+           f"[0:v]{d_chain}[d];[1:v]setpts=PTS-STARTPTS[r];"
            f"[d][r]libvmaf=n_threads={threads}",
            "-f", "null", "-"]
     proc = media.run_quiet(cmd)
