@@ -1,0 +1,17 @@
+services:
+  transqode:
+    build: .
+    # image: ghcr.io/YOURNAME/transqode:latest
+    container_name: transqode
+    ports:
+      - "8585:8585"
+    devices:
+      - /dev/dri:/dev/dri          # Intel GPU for QSV hardware encoding
+    volumes:
+      - ./config:/config           # SQLite database, logs, temp files
+      - /path/to/movies:/media/movies
+      - /path/to/series:/media/series
+      # - /path/to/output:/output  # optional separate destination
+    environment:
+      - TZ=Europe/Berlin
+    restart: unless-stopped

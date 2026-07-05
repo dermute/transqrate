@@ -1,0 +1,8 @@
+.git
+.gitignore
+.claude
+config
+docker-compose.yml
+README.md
+LICENSE
+**/__pycache__
