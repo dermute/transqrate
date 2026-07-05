@@ -113,6 +113,8 @@ class Manager:
         try:
             log(f"job {job_id}: {input_path}")
             log(f"profile: {profile['name']}")
+            logger.info("job %d: starting %s (profile: %s)",
+                        job_id, input_path.name, profile["name"])
             if not input_path.exists():
                 raise media.MediaError("input file no longer exists")
 
@@ -139,6 +141,8 @@ class Manager:
                                        job_id, log, cancel_check=cancelled)
                 icq = result.icq
                 db.update_job(job_id, chosen_icq=icq, vmaf_score=round(result.vmaf, 2))
+                logger.info("job %d: vmaf search done - ICQ %d, predicted VMAF %.2f",
+                            job_id, icq, result.vmaf)
             else:
                 log(f"quality mode: fixed ICQ {icq}")
                 db.update_job(job_id, chosen_icq=icq)
@@ -147,16 +151,23 @@ class Manager:
                 raise vmaf.Cancelled()
 
             db.update_job(job_id, status="running", progress=0)
+            log(f"starting full encode at ICQ {icq} -> {final_out}")
+            logger.info("job %d: encoding %s at ICQ %d", job_id, input_path.name, icq)
             cmd = media.build_command(input_path, tmp_out, profile, icq, info, settings)
 
             last_write = 0.0
+            last_applog = time.monotonic()
 
             def on_progress(pct, fps, speed, eta):
-                nonlocal last_write
+                nonlocal last_write, last_applog
                 if time.monotonic() - last_write >= 1.0:
                     last_write = time.monotonic()
                     db.update_job(job_id, progress=round(pct, 1), fps=fps,
                                   speed=speed, eta_s=eta)
+                if time.monotonic() - last_applog >= 300:
+                    last_applog = time.monotonic()
+                    logger.info("job %d: %.1f%% (speed %s, ETA %s s)",
+                                job_id, pct, speed, eta)
 
             rc = media.run_ffmpeg(cmd, log.fh, duration, on_progress,
                                   on_spawn=lambda p: self._register(job_id, p))
@@ -202,13 +213,17 @@ class Manager:
             saved = size_in - size_out
             log(f"done: {size_in} -> {size_out} bytes "
                 f"(saved {saved} B, {saved / size_in * 100:.1f}%)")
+            logger.info("job %d: done - %s, saved %.1f%% (%d -> %d bytes)",
+                        job_id, final_out.name, saved / size_in * 100, size_in, size_out)
         except vmaf.Cancelled:
             log("job cancelled")
+            logger.info("job %d: cancelled", job_id)
             db.update_job(job_id, status="cancelled", finished_at=db.now())
             db.set_file_state(str(input_path), "candidate")
         except Exception as exc:
             log("ERROR: " + str(exc))
             log(traceback.format_exc())
+            logger.error("job %d: failed - %s", job_id, exc)
             db.update_job(job_id, status="failed", finished_at=db.now(),
                           error=str(exc)[:1000])
             db.set_file_state(str(input_path), "failed", job_id)

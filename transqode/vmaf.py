@@ -56,11 +56,14 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
 
         def evaluate(q: int) -> tuple[float, float]:
             if q in cache:
-                return cache[q]
+                v, r = cache[q]
+                log(f"  ICQ {q}: cached result, VMAF {v:.2f}")
+                return v, r
             if cancel_check():
                 raise Cancelled()
             scores, in_bytes, out_bytes = [], 0, 0
             for i, sample in enumerate(samples):
+                log(f"    sample {i + 1}/{len(samples)}: encoding at ICQ {q}...")
                 enc = workdir / f"enc_{i}_q{q}.mkv"
                 cmd = [config.FFMPEG, "-y", "-hide_banner", "-nostdin",
                        *media.qsv_device_args(settings), "-i", str(sample),
@@ -69,7 +72,11 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
                 if proc.returncode != 0 or not enc.exists():
                     raise media.MediaError(
                         f"sample encode failed at ICQ {q}: {proc.stderr.strip()[-800:]}")
-                scores.append(_vmaf_score(enc, sample))
+                log(f"    sample {i + 1}/{len(samples)}: encoded "
+                    f"({enc.stat().st_size:,} B), computing VMAF...")
+                score = _vmaf_score(enc, sample)
+                log(f"    sample {i + 1}/{len(samples)}: VMAF {score:.2f}")
+                scores.append(score)
                 in_bytes += sample.stat().st_size
                 out_bytes += enc.stat().st_size
             vmaf = sum(scores) / len(scores)
@@ -84,6 +91,7 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
         best: SearchResult | None = None
         while lo <= hi:
             mid = (lo + hi) // 2
+            log(f"search step: trying ICQ {mid} (remaining range {lo}..{hi})")
             vmaf, ratio = evaluate(mid)
             if vmaf >= target:
                 best = SearchResult(mid, vmaf, ratio, True)
@@ -107,10 +115,12 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
 def _extract_samples(input_path: Path, workdir: Path, duration: float,
                      sample_s: int, n: int, log, cancel_check) -> list[Path]:
     samples = []
+    log(f"extracting {n} sample clip(s) of {sample_s}s...")
     for i in range(n):
         if cancel_check():
             raise Cancelled()
         pos = max(0.0, duration * (i + 1) / (n + 1) - sample_s / 2)
+        log(f"  extracting sample {i + 1}/{n} at {pos:.0f}s...")
         out = workdir / f"sample_{i}.mkv"
         cmd = [config.FFMPEG, "-y", "-hide_banner", "-nostdin",
                "-ss", f"{pos:.2f}", "-i", str(input_path), "-t", str(sample_s),

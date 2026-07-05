@@ -161,3 +161,20 @@ def run_ffmpeg(cmd: list[str], log_fh, duration: float | None = None,
 
 def run_quiet(cmd: list[str], timeout: int = 3600) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+
+
+# example file used to render a representative command line for a profile:
+# one video stream, one 5.1 audio stream, one text subtitle
+_EXAMPLE_INFO = {"streams": [
+    {"codec_type": "video", "codec_name": "hevc"},
+    {"codec_type": "audio", "codec_name": "eac3", "channels": 6},
+    {"codec_type": "subtitle", "codec_name": "subrip"},
+]}
+
+
+def command_preview(profile: dict, settings: dict | None = None) -> str:
+    icq = profile.get("icq", 22) if profile.get("quality_mode") != "vmaf" else "AUTO"
+    cmd = build_command(Path("/media/source/Example.mkv"),
+                        Path("/output/.Example.tqtmp." + profile.get("container", "mkv")),
+                        profile, icq, _EXAMPLE_INFO, settings)
+    return shlex.join(str(c) for c in cmd)

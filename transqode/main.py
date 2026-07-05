@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import __version__, config, db, scanner, worker
+from . import __version__, config, db, media, scanner, worker
 
 logger = logging.getLogger("transqode")
 manager = worker.Manager()
@@ -155,7 +155,17 @@ def retry_job(job_id: int):
 
 @app.get("/api/profiles")
 def list_profiles():
-    return db.query("SELECT * FROM profiles ORDER BY name")
+    settings = db.get_settings()
+    profiles = db.query("SELECT * FROM profiles ORDER BY name")
+    for p in profiles:
+        p["command"] = media.command_preview(p, settings)
+    return profiles
+
+
+@app.post("/api/profiles/preview")
+def preview_profile(p: ProfileIn):
+    """Render the ffmpeg command line a (possibly unsaved) profile would run."""
+    return {"command": media.command_preview(p.model_dump(), db.get_settings())}
 
 
 @app.post("/api/profiles")
@@ -262,7 +272,8 @@ def scan_now(source_id: int):
 
 @app.get("/api/settings")
 def get_settings():
-    return {"values": db.get_settings(), "meta": db.SETTINGS_META}
+    return {"values": db.get_settings(), "meta": db.SETTINGS_META,
+            "groups": db.SETTINGS_GROUPS}
 
 
 @app.put("/api/settings")
@@ -301,12 +312,18 @@ def browse(path: str = "/"):
     return {"path": str(p), "parent": str(p.parent) if p != p.parent else None, "dirs": dirs}
 
 
+MAX_LOG_BYTES = 20 * 1024 * 1024
+
+
 def _tail_file(path: Path, tail: int) -> str:
+    """Last `tail` lines of a log; tail<=0 returns the whole file (capped)."""
     if not path.exists():
         return ""
-    tail = max(10, min(tail, 5000))
     with open(path, "r", encoding="utf-8", errors="replace") as fh:
-        return "".join(fh.readlines()[-tail:])
+        if tail <= 0:
+            fh.seek(max(0, path.stat().st_size - MAX_LOG_BYTES))
+            return fh.read()
+        return "".join(fh.readlines()[-min(tail, 100_000):])
 
 
 if __name__ == "__main__":

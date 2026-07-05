@@ -92,6 +92,13 @@ SETTINGS_DEFAULTS = {
     "qsv_device": "",
 }
 
+SETTINGS_GROUPS = {
+    "General": ["workers", "scan_interval_s", "extensions", "min_file_mb", "skip_if_larger"],
+    "FFmpeg": ["qsv_device"],
+    "VMAF search": ["icq_min", "icq_max", "vmaf_sample_s", "vmaf_min_samples",
+                    "vmaf_max_samples"],
+}
+
 SETTINGS_META = {
     "workers": "Parallel transcode workers (keep at 1 per GPU)",
     "scan_interval_s": "Watch: seconds between folder scans",
@@ -151,14 +158,14 @@ def seed_profiles() -> None:
             " audio_codec, audio_kbps_per_channel, container, extra_video_args, created_at, updated_at)"
             " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             ("AV1 QSV + Opus (ICQ 22)", "av1_qsv", "veryslow", "icq", 22, 95.0,
-             "libopus", 64, "mkv", "", ts, ts),
+             "libopus", 64, "mkv", "-extbrc 1 -look_ahead_depth 40", ts, ts),
         )
         conn.execute(
             "INSERT INTO profiles(name, video_codec, preset, quality_mode, icq, vmaf_target,"
             " audio_codec, audio_kbps_per_channel, container, extra_video_args, created_at, updated_at)"
             " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             ("AV1 QSV + Opus (VMAF 95)", "av1_qsv", "veryslow", "vmaf", 22, 95.0,
-             "libopus", 64, "mkv", "", ts, ts),
+             "libopus", 64, "mkv", "-extbrc 1 -look_ahead_depth 40", ts, ts),
         )
         conn.commit()
 

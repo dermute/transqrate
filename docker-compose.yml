@@ -3,6 +3,7 @@ services:
     build: .
     # image: ghcr.io/YOURNAME/transqode:latest
     container_name: transqode
+    init: true                     # reap ffmpeg children, forward signals
     ports:
       - "8585:8585"
     devices:

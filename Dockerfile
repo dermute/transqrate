@@ -25,4 +25,4 @@ EXPOSE 8585
 
 # the base image's entrypoint is ffmpeg itself - replace it with the app
 ENTRYPOINT []
-CMD ["python3", "-m", "uvicorn", "transqode.main:app", "--host", "0.0.0.0", "--port", "8585"]
+CMD ["python3", "-m", "uvicorn", "transqode.main:app", "--host", "0.0.0.0", "--port", "8585", "--no-access-log"]

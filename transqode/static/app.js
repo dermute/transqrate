@@ -332,14 +332,12 @@ async function profiles() {
     <div id="prof-form-slot"></div>
     <button class="primary" id="add-prof">New profile</button>
     <h2>Transcoding profiles</h2>
-    <div class="tablewrap"><table>
-      <thead><tr><th>Name</th><th>Video</th><th>Quality</th><th>Audio</th>
-        <th>Container</th><th></th></tr></thead>
-      <tbody>${profs.map(profileRow).join("")}</tbody></table></div>
+    ${profs.map(profileCard).join("")}
     <p class="inline-note">ICQ (Intelligent Constant Quality) is QSV's quality mode - lower
       values mean higher quality and bigger files. In VMAF mode, Transqode encodes short
       samples of each file at several ICQ values and binary-searches for the highest ICQ
-      that still reaches your VMAF target (inspired by ab-av1).</p>`;
+      that still reaches your VMAF target (inspired by ab-av1). The shown command assumes
+      an example file with one 5.1 audio stream and one text subtitle.</p>`;
   document.getElementById("add-prof").onclick = () => profileForm(null);
   document.querySelectorAll("[data-edit-prof]").forEach(b => b.onclick = () =>
     profileForm(profs.find(p => p.id == b.dataset.editProf)));
@@ -350,21 +348,27 @@ async function profiles() {
   });
 }
 
-function profileRow(p) {
+function profileCard(p) {
   const quality = p.quality_mode === "vmaf"
-    ? `VMAF target ${p.vmaf_target}` : `ICQ ${p.icq}`;
+    ? `VMAF target ${p.vmaf_target} (auto ICQ)` : `ICQ ${p.icq}`;
   const audio = p.audio_codec === "copy"
-    ? "copy" : `${p.audio_codec} @ ${p.audio_kbps_per_channel}k/channel`;
-  return `<tr>
-    <td>${esc(p.name)}</td>
-    <td>${esc(p.video_codec)} (${esc(p.preset)})</td>
-    <td>${esc(quality)}</td>
-    <td>${esc(audio)}</td>
-    <td>${esc(p.container)}</td>
-    <td class="actions">
-      <button class="small" data-edit-prof="${p.id}">Edit</button>
-      <button class="small danger" data-del-prof="${p.id}">Delete</button>
-    </td></tr>`;
+    ? "audio copy" : `${p.audio_codec} @ ${p.audio_kbps_per_channel}k/channel`;
+  return `<div class="card">
+    <div class="row-top">
+      <div class="title">${esc(p.name)}</div>
+      <div class="actions">
+        <button class="small" data-edit-prof="${p.id}">Edit</button>
+        <button class="small danger" data-del-prof="${p.id}">Delete</button>
+      </div>
+    </div>
+    <div class="meta">
+      <span>${esc(p.video_codec)} (${esc(p.preset)})</span>
+      <span>${esc(quality)}</span>
+      <span>${esc(audio)}</span>
+      <span>${esc(p.container)}</span>
+    </div>
+    <pre class="cmdline">${esc(p.command || "")}</pre>
+  </div>`;
 }
 
 function profileForm(prof) {
@@ -409,14 +413,50 @@ function profileForm(prof) {
         <input type="text" name="extra_video_args" value="${esc(p.extra_video_args)}"
           placeholder="-look_ahead_depth 40"></label>
     </div>
+    <div class="field" style="margin-top:14px">
+      <span style="font-size:12px;color:var(--ink-2);font-weight:500">Resulting ffmpeg command</span>
+      <pre class="cmdline" id="cmd-preview">&hellip;</pre>
+    </div>
     <div class="form-foot">
       <button type="submit" class="primary">${prof ? "Save changes" : "Create profile"}</button>
       <button type="button" id="prof-cancel">Close</button>
       <span class="hint">Opus keeps the source channel count; bitrate = channels &times; kbps.</span>
     </div>
   </form>`;
+  const form = document.getElementById("prof-form");
+  const readForm = () => {
+    const f = new FormData(form);
+    return {
+      name: (f.get("name") || "profile").toString().trim() || "profile",
+      video_codec: f.get("video_codec").trim() || "av1_qsv",
+      preset: f.get("preset"),
+      quality_mode: f.get("quality_mode"),
+      icq: Number(f.get("icq")) || 22,
+      vmaf_target: Number(f.get("vmaf_target")) || 95,
+      audio_codec: f.get("audio_codec"),
+      audio_kbps_per_channel: Number(f.get("audio_kbps_per_channel")) || 64,
+      container: f.get("container"),
+      extra_video_args: f.get("extra_video_args").trim(),
+    };
+  };
+  let previewTimer = null;
+  const updatePreview = () => {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(async () => {
+      try {
+        const r = await api("/api/profiles/preview", {
+          method: "POST", body: JSON.stringify(readForm()),
+        });
+        const el = document.getElementById("cmd-preview");
+        if (el) el.textContent = r.command;
+      } catch (e) { /* invalid intermediate state - ignore */ }
+    }, 300);
+  };
+  form.addEventListener("input", updatePreview);
+  form.addEventListener("change", updatePreview);
+  updatePreview();
   document.getElementById("prof-cancel").onclick = () => (slot.innerHTML = "");
-  document.getElementById("prof-form").onsubmit = async ev => {
+  form.onsubmit = async ev => {
     ev.preventDefault();
     const f = new FormData(ev.target);
     const body = {
@@ -456,6 +496,14 @@ async function logs() {
       <div>
         <div class="form-foot" style="margin:0 0 10px">
           <label class="check"><input type="checkbox" id="log-follow" checked> Follow</label>
+          <label class="check">Lines
+            <select id="log-lines" style="width:auto">
+              <option>500</option>
+              <option selected>2000</option>
+              <option>10000</option>
+              <option value="0">All</option>
+            </select>
+          </label>
           <span class="hint" id="log-name"></span>
         </div>
         <div class="logview" id="logview">Loading&hellip;</div>
@@ -473,6 +521,7 @@ async function logs() {
     state.logJob = d.jobs.length ? String(d.jobs[0].id) : "app";
   }
   highlight();
+  document.getElementById("log-lines").onchange = () => refreshLog(true);
   await refreshLog(true);
   pollTimer = setInterval(() => {
     if (document.getElementById("log-follow")?.checked) refreshLog(false);
@@ -483,7 +532,8 @@ async function refreshLog(jump) {
   const view = document.getElementById("logview");
   if (!view) return;
   const which = state.logJob;
-  const url = which === "app" ? "/api/logs/app?tail=800" : `/api/jobs/${which}/log?tail=800`;
+  const lines = document.getElementById("log-lines")?.value ?? "2000";
+  const url = which === "app" ? `/api/logs/app?tail=${lines}` : `/api/jobs/${which}/log?tail=${lines}`;
   document.getElementById("log-name").textContent =
     which === "app" ? "transqode.log" : `job_${which}.log`;
   try {
@@ -500,14 +550,20 @@ async function refreshLog(jump) {
 
 async function settings() {
   const d = await api("/api/settings");
-  const keys = Object.keys(d.values);
+  const grouped = new Set(Object.values(d.groups || {}).flat());
+  const rest = Object.keys(d.values).filter(k => !grouped.has(k));
+  const groups = { ...(d.groups || { Settings: Object.keys(d.values) }) };
+  if (rest.length) groups.Other = rest;
+  const field = k => `<label class="field"><span>${esc(d.meta[k] || k)}</span>
+    <input type="text" name="${esc(k)}" value="${esc(d.values[k])}">
+    <div class="inline-note">${esc(k)}</div></label>`;
   $main.innerHTML = `<h1>Settings</h1>
-    <form class="panel" id="settings-form">
-      <div class="grid">
-        ${keys.map(k => `<label class="field"><span>${esc(d.meta[k] || k)}</span>
-          <input type="text" name="${esc(k)}" value="${esc(d.values[k])}">
-          <div class="inline-note">${esc(k)}</div></label>`).join("")}
-      </div>
+    <form id="settings-form">
+      ${Object.entries(groups).filter(([, keys]) => keys.length).map(([name, keys]) => `
+        <div class="panel">
+          <h3 class="panel-title">${esc(name)}</h3>
+          <div class="grid">${keys.map(field).join("")}</div>
+        </div>`).join("")}
       <div class="form-foot">
         <button type="submit" class="primary">Save settings</button>
         <span class="hint">Worker count changes take effect after a container restart.</span>
