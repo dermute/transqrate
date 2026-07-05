@@ -3,7 +3,6 @@ name: docker
 on:
   push:
     branches: [main]
-    tags: ["v*"]
 
 jobs:
   build-and-push:
@@ -25,7 +24,6 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
 
       - uses: docker/build-push-action@v6

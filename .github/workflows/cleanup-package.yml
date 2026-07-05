@@ -1,0 +1,30 @@
+# One-off helper: delete the v0.1.0 container version from GHCR.
+# Dispatched manually; remove this file after it has done its job.
+name: cleanup-package
+on: workflow_dispatch
+
+jobs:
+  delete-v010:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const versions = await github.paginate(
+              'GET /users/dermute/packages/container/transqrate/versions',
+              { per_page: 100 });
+            let deleted = 0;
+            for (const v of versions) {
+              const tags = v.metadata?.container?.tags ?? [];
+              core.info(`version ${v.id}: tags=[${tags.join(', ')}]`);
+              if (tags.includes('v0.1.0')) {
+                await github.request(
+                  'DELETE /users/dermute/packages/container/transqrate/versions/{id}',
+                  { id: v.id });
+                core.info(`deleted version ${v.id}`);
+                deleted++;
+              }
+            }
+            if (!deleted) core.setFailed('no version tagged v0.1.0 found');
