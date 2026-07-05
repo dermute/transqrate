@@ -5,3 +5,4 @@ config/
 *.db
 *.db-wal
 *.db-shm
+.claude/
