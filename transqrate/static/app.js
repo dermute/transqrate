@@ -488,7 +488,7 @@ function profileForm(prof) {
         </select></label>
       <label class="field"><span>Extra ffmpeg video args</span>
         <input type="text" name="extra_video_args" value="${esc(p.extra_video_args)}"
-          placeholder="-look_ahead_depth 40"></label>
+          placeholder="-look_ahead_depth 100 -extbrc 1"></label>
     </div>
     <div class="field" style="margin-top:14px">
       <span style="font-size:12px;color:var(--ink-2);font-weight:500">Resulting ffmpeg command</span>

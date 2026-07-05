@@ -32,7 +32,7 @@ def scale_args(profile: dict) -> list[str]:
     width = RES_WIDTHS.get((profile.get("max_resolution") or "source"))
     if not width:
         return []
-    return ["-vf", f"scale=w='min({width},iw)':h=-2:flags=lanczos"]
+    return ["-vf", f"scale=w='min({width},iw)':h=-2:flags=lanczos+accurate_rnd"]
 
 
 class MediaError(Exception):

@@ -106,7 +106,7 @@ ab-av1's `--reference-vfilter` default).
 | Audio | Opus at N kbps × channel count (channels preserved), or copy |
 | Audio channel limit | optional downmix cap, e.g. *max 5.1* turns 7.1 into 5.1 but leaves stereo untouched |
 | Container | mkv (recommended) or mp4 |
-| Extra video args | appended verbatim, e.g. `-look_ahead_depth 40` |
+| Extra video args | appended verbatim, e.g. `-look_ahead_depth 100 -extbrc 1 -adaptive_i 1 -adaptive_b 1 -g 240` (the default profiles' setting) |
 
 Subtitles, chapters, metadata and (for mkv) font attachments are carried over;
 `mov_text` subtitles are converted to SRT.
