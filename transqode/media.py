@@ -186,10 +186,12 @@ def run_quiet(cmd: list[str], timeout: int = 3600) -> subprocess.CompletedProces
 
 
 # example file used to render a representative command line for a profile:
-# one video stream, one 5.1 audio stream, one text subtitle
+# video, a 5.1 main track plus a stereo track (to show the per-stream
+# bitrate = channels x kbps), and a text subtitle
 _EXAMPLE_INFO = {"streams": [
     {"codec_type": "video", "codec_name": "hevc"},
     {"codec_type": "audio", "codec_name": "eac3", "channels": 6},
+    {"codec_type": "audio", "codec_name": "aac", "channels": 2},
     {"codec_type": "subtitle", "codec_name": "subrip"},
 ]}
 

@@ -85,7 +85,7 @@ SETTINGS_DEFAULTS = {
     "scan_interval_s": "300",
     "extensions": "mkv",
     "min_file_mb": "10",
-    "icq_min": "16",
+    "icq_min": "14",
     "icq_max": "35",
     "vmaf_sample_s": "20",
     "vmaf_min_samples": "6",

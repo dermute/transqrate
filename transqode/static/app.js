@@ -337,7 +337,9 @@ async function profiles() {
       values mean higher quality and bigger files. In VMAF mode, Transqode encodes short
       samples of each file at several ICQ values and binary-searches for the highest ICQ
       that still reaches your VMAF target (inspired by ab-av1). The shown command assumes
-      an example file with one 5.1 audio stream and one text subtitle.</p>`;
+      an example file with a 5.1 and a stereo audio stream plus a text subtitle - audio
+      bitrates are computed per stream (channels &times; kbps) from the actual file at
+      job time.</p>`;
   document.getElementById("add-prof").onclick = () => profileForm(null);
   document.querySelectorAll("[data-edit-prof]").forEach(b => b.onclick = () =>
     profileForm(profs.find(p => p.id == b.dataset.editProf)));
@@ -448,8 +450,8 @@ function profileForm(prof) {
       video_codec: f.get("video_codec").trim() || "av1_qsv",
       preset: f.get("preset"),
       quality_mode: f.get("quality_mode"),
-      icq: Number(f.get("icq")) || 22,
-      vmaf_target: Number(f.get("vmaf_target")) || 95,
+      icq: Number(f.get("icq")) || p.icq || 22,
+      vmaf_target: Number(f.get("vmaf_target")) || p.vmaf_target || 95,
       audio_codec: f.get("audio_codec"),
       audio_kbps_per_channel: Number(f.get("audio_kbps_per_channel")) || 64,
       audio_max_channels: Number(f.get("audio_max_channels")) || 0,
@@ -458,6 +460,13 @@ function profileForm(prof) {
       extra_video_args: f.get("extra_video_args").trim(),
     };
   };
+  const syncQualityFields = () => {
+    const vmafMode = form.elements.quality_mode.value === "vmaf";
+    form.elements.icq.disabled = vmafMode;
+    form.elements.vmaf_target.disabled = !vmafMode;
+  };
+  form.elements.quality_mode.addEventListener("change", syncQualityFields);
+  syncQualityFields();
   let previewTimer = null;
   const updatePreview = () => {
     clearTimeout(previewTimer);

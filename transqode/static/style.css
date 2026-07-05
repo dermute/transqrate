@@ -176,6 +176,7 @@ input[type="text"], input[type="number"], select {
   font-size: 13px;
 }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
+input:disabled, select:disabled { opacity: 0.4; cursor: not-allowed; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); cursor: pointer; }
 .form-foot { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
 .form-foot .hint { color: var(--ink-3); font-size: 12px; margin-left: auto; }

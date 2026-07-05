@@ -87,6 +87,12 @@ For a profile in *VMAF target* mode, each file first goes through an
 Sample count, clip length and the ICQ search range are configurable on the
 Settings page. Cost: roughly 4–6 short sample encodes + VMAF runs per file.
 
+If the profile downscales, the *reference* sample is passed through the
+identical scale filter (pure filtering, no re-encode) so both sides are
+compared at the output resolution — the score isolates codec fidelity
+instead of punishing the intentional resolution change (same approach as
+ab-av1's `--reference-vfilter` default).
+
 ## Profiles
 
 | Field | Meaning |
