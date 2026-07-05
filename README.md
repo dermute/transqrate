@@ -109,7 +109,8 @@ Subtitles, chapters, metadata and (for mkv) font attachments are carried over;
   replaced (same name, profile's container extension). With an output folder
   the source tree is mirrored there and originals are kept.
 - **Skip if larger**: if the encode ends up bigger than the source, the result
-  is discarded and the original kept (configurable).
+  is discarded; with an output folder configured the original is moved there
+  instead, so *every* processed file ends up in the output tree (configurable).
 - **Tagging**: outputs carry `TRANSQODE=1`, `TRANSQODE_PROFILE`,
   `TRANSQODE_ICQ` and `TRANSQODE_DATE` format tags.
 - **Watch**: every `scan_interval_s` (default 300 s) watched folders are

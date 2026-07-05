@@ -81,12 +81,12 @@ CREATE TABLE IF NOT EXISTS settings (
 SETTINGS_DEFAULTS = {
     "workers": "1",
     "scan_interval_s": "300",
-    "extensions": "mkv,mp4,m4v,avi,mov,ts,m2ts,mts,wmv,webm,mpg,mpeg,flv",
+    "extensions": "mkv",
     "min_file_mb": "10",
     "icq_min": "16",
     "icq_max": "35",
     "vmaf_sample_s": "20",
-    "vmaf_min_samples": "2",
+    "vmaf_min_samples": "6",
     "vmaf_max_samples": "6",
     "skip_if_larger": "1",
     "qsv_device": "",
@@ -102,7 +102,7 @@ SETTINGS_META = {
     "vmaf_sample_s": "VMAF search: seconds per sample clip",
     "vmaf_min_samples": "VMAF search: minimum sample clips per file",
     "vmaf_max_samples": "VMAF search: maximum sample clips per file",
-    "skip_if_larger": "Discard result and keep original if output is larger (1/0)",
+    "skip_if_larger": "If output is larger: discard it and move the original to the output folder instead (1/0)",
     "qsv_device": "DRM render node for QSV, e.g. /dev/dri/renderD129 (empty = auto)",
 }
 

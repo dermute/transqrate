@@ -4,6 +4,7 @@ profile asks for it, drive ffmpeg with live progress, finalize outputs."""
 import json
 import logging
 import os
+import shutil
 import subprocess
 import threading
 import time
@@ -173,8 +174,20 @@ class Manager:
                 log(f"output ({size_out} B) is not smaller than input ({size_in} B) - "
                     "keeping original")
                 tmp_out.unlink(missing_ok=True)
-                self._finish(job_id, "skipped", input_path, size_in=size_in,
-                             note="output would be larger than input")
+                note = "output would be larger than input"
+                # processed files always end up in the output folder, even
+                # untranscoded ones - move the original there
+                if source and source["output_path"]:
+                    dest = self._output_path(input_path, source, profile).with_suffix(
+                        input_path.suffix)
+                    try:
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(input_path), str(dest))
+                        note = "output would be larger - original moved to output"
+                        log(f"moved original to {dest}")
+                    except OSError as exc:
+                        log(f"could not move original to output: {exc}")
+                self._finish(job_id, "skipped", input_path, size_in=size_in, note=note)
                 return
 
             os.replace(tmp_out, final_out)
