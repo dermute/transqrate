@@ -1,7 +1,7 @@
 services:
   transqrate:
     build: .
-    # image: ghcr.io/YOURNAME/transqrate:latest
+    # image: ghcr.io/dermute/transqrate:latest
     container_name: transqrate
     init: true                     # reap ffmpeg children, forward signals
     ports:

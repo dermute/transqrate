@@ -39,7 +39,7 @@ prebuilt — nothing is compiled from source).
 # docker-compose.yml
 services:
   transqrate:
-    build: .                        # or: image: ghcr.io/YOURNAME/transqrate:latest
+    build: .                        # or: image: ghcr.io/dermute/transqrate:latest
     container_name: transqrate
     ports:
       - "8585:8585"
