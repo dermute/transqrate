@@ -616,6 +616,8 @@ async function logs() {
           <span class="hint" id="log-name"></span>
         </div>
         <div class="logview" id="logview">Loading&hellip;</div>
+        <div class="inline-note" style="margin-top:10px">Currently running command</div>
+        <pre class="cmdline" id="log-cmd" style="margin-top:4px">&ndash;</pre>
       </div>
     </div>`;
   document.querySelectorAll("[data-logsel]").forEach(a => a.onclick = ev => {
@@ -652,6 +654,17 @@ async function refreshLog(jump) {
     if (stick) view.scrollTop = view.scrollHeight;
   } catch (e) {
     view.textContent = "Could not load log: " + e.message;
+  }
+  const cmdEl = document.getElementById("log-cmd");
+  if (cmdEl) {
+    if (which === "app") {
+      cmdEl.textContent = "\u2013 (application log)";
+    } else {
+      try {
+        const j = await api(`/api/jobs/${which}`);
+        cmdEl.textContent = j.current_cmd || "\u2013 (no command running)";
+      } catch (e) { cmdEl.textContent = "\u2013"; }
+    }
   }
 }
 

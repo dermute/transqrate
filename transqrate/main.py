@@ -123,6 +123,7 @@ def get_job(job_id: int):
     job = db.get_job(job_id)
     if not job:
         raise HTTPException(404, "job not found")
+    job["current_cmd"] = manager.current_cmd(job_id)
     return job
 
 

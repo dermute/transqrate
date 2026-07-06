@@ -4,6 +4,7 @@ profile asks for it, drive ffmpeg with live progress, finalize outputs."""
 import json
 import logging
 import os
+import shlex
 import shutil
 import subprocess
 import threading
@@ -36,6 +37,7 @@ class Manager:
         self._threads: list[threading.Thread] = []
         self._stop = threading.Event()
         self._procs: dict[int, subprocess.Popen] = {}
+        self._cmds: dict[int, str] = {}
         self._lock = threading.Lock()
 
     def start(self) -> None:
@@ -82,6 +84,15 @@ class Manager:
     def _unregister(self, job_id: int) -> None:
         with self._lock:
             self._procs.pop(job_id, None)
+            self._cmds.pop(job_id, None)
+
+    def current_cmd(self, job_id: int) -> str | None:
+        with self._lock:
+            return self._cmds.get(job_id)
+
+    def _set_cmd(self, job_id: int, cmd: list) -> None:
+        with self._lock:
+            self._cmds[job_id] = shlex.join(str(c) for c in cmd)
 
     def _loop(self) -> None:
         while not self._stop.is_set():
@@ -143,7 +154,8 @@ class Manager:
             if profile.get("quality_mode") == "vmaf":
                 log("quality mode: VMAF target - searching for matching ICQ")
                 result = vmaf.find_icq(input_path, profile, settings, info,
-                                       job_id, log, cancel_check=cancelled)
+                                       job_id, log, cancel_check=cancelled,
+                                       on_cmd=lambda c: self._set_cmd(job_id, c))
                 icq = result.icq
                 vmaf_score = round(result.vmaf, 2)
                 db.update_job(job_id, chosen_icq=icq, vmaf_score=vmaf_score)
@@ -161,6 +173,7 @@ class Manager:
             logger.info("job %d: encoding %s at ICQ %d", job_id, input_path.name, icq)
             cmd = media.build_command(input_path, tmp_out, profile, icq, info, settings,
                                       vmaf_score=vmaf_score)
+            self._set_cmd(job_id, cmd)
 
             last_write = 0.0
             last_applog = time.monotonic()

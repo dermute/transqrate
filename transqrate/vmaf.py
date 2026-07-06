@@ -29,7 +29,8 @@ class SearchResult:
 
 
 def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
-             job_id: int, log, cancel_check=lambda: False) -> SearchResult:
+             job_id: int, log, cancel_check=lambda: False,
+             on_cmd=lambda cmd: None) -> SearchResult:
     duration = media.duration_s(info)
     if duration <= 0:
         raise media.MediaError("cannot determine duration for VMAF sampling")
@@ -64,7 +65,8 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
     workdir = config.TMP_DIR / f"vmaf_job_{job_id}"
     workdir.mkdir(parents=True, exist_ok=True)
     try:
-        samples = _extract_samples(input_path, workdir, duration, sample_s, n, log, cancel_check)
+        samples = _extract_samples(input_path, workdir, duration, sample_s, n,
+                                   log, cancel_check, on_cmd)
         if not samples:
             raise media.MediaError("could not extract any usable sample clips")
         log(f"vmaf search: target {target}, ICQ range [{icq_min}..{icq_max}], "
@@ -87,13 +89,14 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
                 cmd = [config.FFMPEG, "-y", "-hide_banner", "-nostdin",
                        *media.qsv_device_args(settings), "-i", str(sample),
                        *media.video_args(profile, q), "-an", "-sn", "-dn", str(enc)]
+                on_cmd(cmd)
                 proc = media.run_quiet(cmd)
                 if proc.returncode != 0 or not enc.exists():
                     raise media.MediaError(
                         f"sample encode failed at ICQ {q}: {proc.stderr.strip()[-800:]}")
                 log(f"    sample {i + 1}/{len(samples)}: encoded "
                     f"({enc.stat().st_size:,} B), computing VMAF...")
-                score = _vmaf_score(enc, sample, ref_filter, model)
+                score = _vmaf_score(enc, sample, ref_filter, model, on_cmd)
                 log(f"    sample {i + 1}/{len(samples)}: VMAF {score:.2f}")
                 scores.append(score)
                 in_bytes += sample.stat().st_size
@@ -132,7 +135,8 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
 
 
 def _extract_samples(input_path: Path, workdir: Path, duration: float,
-                     sample_s: int, n: int, log, cancel_check) -> list[Path]:
+                     sample_s: int, n: int, log, cancel_check,
+                     on_cmd=lambda cmd: None) -> list[Path]:
     samples = []
     log(f"extracting {n} sample clip(s) of {sample_s}s...")
     for i in range(n):
@@ -144,6 +148,7 @@ def _extract_samples(input_path: Path, workdir: Path, duration: float,
         cmd = [config.FFMPEG, "-y", "-hide_banner", "-nostdin",
                "-ss", f"{pos:.2f}", "-i", str(input_path), "-t", str(sample_s),
                "-map", "0:v:0", "-c", "copy", "-an", "-sn", "-dn", str(out)]
+        on_cmd(cmd)
         proc = media.run_quiet(cmd)
         if proc.returncode == 0 and out.exists() and out.stat().st_size > 0:
             samples.append(out)
@@ -154,7 +159,8 @@ def _extract_samples(input_path: Path, workdir: Path, duration: float,
 
 def _vmaf_score(distorted: Path, reference: Path,
                 ref_filter: str | None = None,
-                model: str | None = None) -> float:
+                model: str | None = None,
+                on_cmd=lambda cmd: None) -> float:
     threads = os.cpu_count() or 4
     # the distorted clip was encoded with the profile's scale filter; apply
     # the same filter to the reference so both are compared at output
@@ -169,6 +175,7 @@ def _vmaf_score(distorted: Path, reference: Path,
            f"[0:v]setpts=PTS-STARTPTS[d];[1:v]{r_chain}[r];"
            f"[d][r]libvmaf={opts}",
            "-f", "null", "-"]
+    on_cmd(cmd)
     proc = media.run_quiet(cmd)
     match = VMAF_RE.search(proc.stderr or "")
     if proc.returncode != 0 or not match:
