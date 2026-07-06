@@ -133,10 +133,18 @@ def connect() -> sqlite3.Connection:
         return _conn
 
 
+# column additions for databases created by older releases
+MIGRATIONS: list[tuple[str, str, str]] = []
+
+
 def init() -> None:
     with _lock:
         conn = connect()
         conn.executescript(SCHEMA)
+        for table, col, ddl in MIGRATIONS:
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+            if col not in cols:
+                conn.execute(ddl)
         for k, v in SETTINGS_DEFAULTS.items():
             conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
         # abandon jobs that were mid-flight when the app was stopped
