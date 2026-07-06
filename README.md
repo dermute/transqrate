@@ -32,7 +32,7 @@ prebuilt — nothing is compiled from source).
   64 kbps per channel. Create as many profiles as you like (fixed ICQ or VMAF
   target, preset, audio copy/re-encode, container, extra ffmpeg args)
 - **Dashboard**: live progress (%, fps, speed, ETA), queue, per-file and total
-  **saved space**, retry/cancel
+  **saved space**, retry/cancel, deletable history (entries and their logs)
 - **Logs in the UI**: full ffmpeg output per job plus the application log
 - **Finished files are tagged** with a `TRANSQRATE` metadata tag (visible via
   `ffprobe`), so they are recognized and never transcoded twice — even after

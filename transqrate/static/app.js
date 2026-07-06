@@ -121,7 +121,9 @@ async function refreshDashboard() {
         <td>${esc(j.profile_name)}</td>
         <td><button class="small danger" data-cancel="${j.id}">Cancel</button></td></tr>`).join("")}
       </tbody></table></div>` : ""}
-    <h2>Recent</h2>
+    <h2>Recent
+      <button class="small danger" id="clear-history" style="margin-left:10px">Delete all</button>
+    </h2>
     <div class="tablewrap"><table>
       <thead><tr><th>File</th><th>Status</th><th>Profile</th><th>ICQ</th><th>VMAF</th>
         <th>Size in &rarr; out</th><th>Saved</th><th></th></tr></thead>
@@ -168,6 +170,7 @@ function recentRow(j) {
       ${["failed", "cancelled", "skipped"].includes(j.status) ?
         `<button class="small" data-retry="${j.id}">Retry</button>` : ""}
       <button class="small" data-log="${j.id}">Log</button>
+      <button class="small danger" data-del-job="${j.id}" title="Delete entry and its log">&#10005;</button>
     </div></td></tr>`;
 }
 
@@ -184,6 +187,20 @@ function bindJobButtons(root) {
     state.logJob = b.dataset.log;
     location.hash = "#/logs";
   });
+  root.querySelectorAll("[data-del-job]").forEach(b => b.onclick = async () => {
+    if (!confirm("Delete this entry and its log?")) return;
+    try { await api(`/api/jobs/${b.dataset.delJob}`, { method: "DELETE" }); refreshDashboard(); }
+    catch (e) { toast(e.message, true); }
+  });
+  const clearBtn = root.querySelector("#clear-history");
+  if (clearBtn) clearBtn.onclick = async () => {
+    if (!confirm("Delete ALL finished entries and their logs?")) return;
+    try {
+      const r = await api("/api/jobs", { method: "DELETE" });
+      toast(`${r.deleted} entries deleted`);
+      refreshDashboard();
+    } catch (e) { toast(e.message, true); }
+  };
 }
 
 /* --------------------------------------------------------------- sources */

@@ -141,6 +141,40 @@ def cancel_job(job_id: int):
     return {"ok": True}
 
 
+TERMINAL = ("done", "failed", "cancelled", "skipped")
+
+
+def _delete_job(job: dict) -> None:
+    if job.get("log_file"):
+        Path(job["log_file"]).unlink(missing_ok=True)
+    # keep the scan state (file stays remembered as processed), only the
+    # dangling job reference is cleared
+    db.execute("UPDATE files SET job_id=NULL WHERE job_id=?", (job["id"],))
+    db.execute("DELETE FROM jobs WHERE id=?", (job["id"],))
+
+
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: int):
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "job not found")
+    if job["status"] not in TERMINAL:
+        raise HTTPException(409, "job is still active - cancel it first")
+    _delete_job(job)
+    return {"ok": True}
+
+
+@app.delete("/api/jobs")
+def delete_all_jobs():
+    """Delete every finished job (history), including their log files."""
+    jobs = db.query(
+        f"SELECT * FROM jobs WHERE status IN ({','.join('?' * len(TERMINAL))})",
+        TERMINAL)
+    for job in jobs:
+        _delete_job(job)
+    return {"deleted": len(jobs)}
+
+
 @app.post("/api/jobs/{job_id}/retry")
 def retry_job(job_id: int):
     job = db.get_job(job_id)
