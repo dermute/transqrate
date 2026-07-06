@@ -15,9 +15,9 @@ services:
     volumes:
       - ./config:/config           # SQLite database, logs, temp files
       # source folders - add them as sources in the web UI using these
-      # container paths (e.g. /media/movies):
-      - /path/to/movies:/media/movies
-      - /path/to/series:/media/series
+      # container paths (e.g. /media/library):
+      - /path/to/media:/media/library
+      - /path/to/more-media:/media/other
       # optional destination folder: assign it as "output folder" of a
       # source in the UI to keep originals; omit it (and leave the output
       # folder empty in the UI) to transcode in place:

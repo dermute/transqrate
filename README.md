@@ -1,9 +1,16 @@
 # transQrate
 
-Self-hosted media transcoding with Intel QSV hardware AV1 encoding, Opus audio
-and **VMAF-targeted quality search** — inspired by
-[Unmanic](https://github.com/Unmanic/unmanic), [FileFlows](https://fileflows.com),
-[Tdarr](https://home.tdarr.io) and [ab-av1](https://github.com/alexheretic/ab-av1).
+**Tell transQrate how good the result should look — it finds the encoder
+settings.** Instead of guessing quality values, you set a VMAF target
+(e.g. 95) per media folder: transQrate cuts short sample clips from every
+file, encodes them at candidate quality levels, scores them with libvmaf
+and binary-searches the highest ICQ — the smallest file — that still hits
+your target. The ab-av1 idea, built into a self-hosted transcoding server.
+
+Under the hood: Intel QSV hardware AV1 encoding, Opus audio and a slim
+web UI — inspired by [Unmanic](https://github.com/Unmanic/unmanic),
+[FileFlows](https://fileflows.com), [Tdarr](https://home.tdarr.io) and
+[ab-av1](https://github.com/alexheretic/ab-av1).
 
 Everything runs in a single Docker container built on
 [linuxserver.io's ffmpeg image](https://github.com/linuxserver/docker-ffmpeg)
@@ -12,6 +19,9 @@ prebuilt — nothing is compiled from source).
 
 ## Features
 
+- **VMAF matching** (à la ab-av1): set a VMAF target instead of a fixed
+  quality — every file gets exactly the quality you asked for, at the
+  smallest size the encoder can deliver
 - **Slim web UI** (no build step, no external assets) with dashboard, sources,
   profiles, logs and settings pages
 - **Source folders**: assign a transcoding profile per folder, hit *Scan now*,
@@ -21,10 +31,6 @@ prebuilt — nothing is compiled from source).
   `av1_qsv` in ICQ mode, audio in Opus keeping the source channel count at
   64 kbps per channel. Create as many profiles as you like (fixed ICQ or VMAF
   target, preset, audio copy/re-encode, container, extra ffmpeg args)
-- **VMAF matching** (à la ab-av1): set a VMAF target (e.g. 95) instead of a
-  fixed quality. transQrate cuts short sample clips from across the file,
-  encodes them at candidate ICQ values, scores them with libvmaf and
-  binary-searches the highest ICQ (= smallest file) that still meets the target
 - **Dashboard**: live progress (%, fps, speed, ETA), queue, per-file and total
   **saved space**, retry/cancel
 - **Logs in the UI**: full ffmpeg output per job plus the application log
@@ -57,7 +63,7 @@ services:
 docker compose up -d
 ```
 
-Open **http://localhost:8585**, add `/media/movies` as a source, pick a
+Open **http://localhost:8585**, add `/media/library` as a source, pick a
 profile, press **Scan now**.
 
 ### Source & output folders
@@ -69,7 +75,7 @@ folder:
 - **No output folder** — transcode *in place*: the finished file replaces
   the original (same location and name, container extension of the profile).
 - **With an output folder** (e.g. `/output`) — the source tree is mirrored
-  there (`/media/movies/A/b.mkv` → `/output/A/b.mkv`) and originals are
+  there (`/media/library/A/b.mkv` → `/output/A/b.mkv`) and originals are
   kept untouched. If an encode would end up larger than the source, the
   original is *moved* to the output folder instead, so the output tree
   always holds every processed file.
