@@ -164,11 +164,11 @@ function recentRow(j) {
     <td class="num">${j.vmaf_score ?? "–"}</td>
     <td class="num">${j.size_in != null ? fmtBytes(j.size_in) + " → " + fmtBytes(j.size_out) : "–"}</td>
     <td class="num">${savedCell(j)}</td>
-    <td class="actions">
+    <td><div class="actions">
       ${["failed", "cancelled", "skipped"].includes(j.status) ?
         `<button class="small" data-retry="${j.id}">Retry</button>` : ""}
       <button class="small" data-log="${j.id}">Log</button>
-    </td></tr>`;
+    </div></td></tr>`;
 }
 
 function bindJobButtons(root) {
@@ -236,12 +236,12 @@ function sourceRow(s) {
     <td class="num">${s.stats.done}</td>
     <td class="num">${fmtBytes(s.stats.saved)}</td>
     <td class="num">${s.stats.active}</td>
-    <td class="actions">
+    <td><div class="actions">
       <button class="small primary" data-scan="${s.id}">Scan now</button>
       <button class="small" data-files="${s.id}">Details</button>
       <button class="small" data-edit-src="${s.id}">Edit</button>
       <button class="small danger" data-del-src="${s.id}">Delete</button>
-    </td></tr>`;
+    </div></td></tr>`;
 }
 
 async function sourceDetails(src) {
