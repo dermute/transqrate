@@ -83,7 +83,8 @@ def qsv_device_args(settings: dict | None) -> list[str]:
 
 
 def build_command(input_path: Path, output_path: Path, profile: dict,
-                  icq: int, info: dict, settings: dict | None = None) -> list[str]:
+                  icq: int, info: dict, settings: dict | None = None,
+                  vmaf_score: float | None = None) -> list[str]:
     """Full transcode command: AV1 QSV video (ICQ mode via -global_quality),
     Opus audio at N kbps per channel keeping the channel count, subs copied,
     and a TRANSQRATE tag so finished files are recognizable."""
@@ -120,9 +121,10 @@ def build_command(input_path: Path, output_path: Path, profile: dict,
     cmd += ["-metadata", f"{TAG_KEY}=1",
             "-metadata", f"{TAG_KEY}_PROFILE={profile.get('name', '')}",
             "-metadata", f"{TAG_KEY}_ICQ={icq}",
-            "-metadata", f"{TAG_KEY}_DATE={stamp}",
-            "-progress", "pipe:1",
-            str(output_path)]
+            "-metadata", f"{TAG_KEY}_DATE={stamp}"]
+    if vmaf_score is not None:
+        cmd += ["-metadata", f"{TAG_KEY}_VMAF={vmaf_score}"]
+    cmd += ["-progress", "pipe:1", str(output_path)]
     return cmd
 
 

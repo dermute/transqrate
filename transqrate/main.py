@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import __version__, config, db, media, scanner, worker
+from . import config, db, media, scanner, worker
 
 logger = logging.getLogger("transqrate")
 manager = worker.Manager()
@@ -35,13 +35,13 @@ async def lifespan(_: FastAPI):
     db.init()
     manager.start()
     watcher.start()
-    logger.info("transqrate %s ready", __version__)
+    logger.info("transqrate ready")
     yield
     watcher.stop()
     manager.stop()
 
 
-app = FastAPI(title="transQrate", version=__version__, lifespan=lifespan)
+app = FastAPI(title="transQrate", version="latest", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
 
 
@@ -84,7 +84,7 @@ def status():
         " COALESCE(SUM(size_out),0) AS bytes_out FROM jobs WHERE status='done'")
     counts = {r["status"]: r["n"] for r in
               db.query("SELECT status, COUNT(*) AS n FROM jobs GROUP BY status")}
-    return {"version": __version__, "totals": totals, "counts": counts}
+    return {"totals": totals, "counts": counts}
 
 
 @app.get("/api/dashboard")

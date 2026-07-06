@@ -139,12 +139,14 @@ class Manager:
             db.update_job(job_id, output_path=str(final_out))
 
             icq = int(profile.get("icq", 22))
+            vmaf_score = None
             if profile.get("quality_mode") == "vmaf":
                 log("quality mode: VMAF target - searching for matching ICQ")
                 result = vmaf.find_icq(input_path, profile, settings, info,
                                        job_id, log, cancel_check=cancelled)
                 icq = result.icq
-                db.update_job(job_id, chosen_icq=icq, vmaf_score=round(result.vmaf, 2))
+                vmaf_score = round(result.vmaf, 2)
+                db.update_job(job_id, chosen_icq=icq, vmaf_score=vmaf_score)
                 logger.info("job %d: vmaf search done - ICQ %d, predicted VMAF %.2f",
                             job_id, icq, result.vmaf)
             else:
@@ -157,7 +159,8 @@ class Manager:
             db.update_job(job_id, status="running", progress=0)
             log(f"starting full encode at ICQ {icq} -> {final_out}")
             logger.info("job %d: encoding %s at ICQ %d", job_id, input_path.name, icq)
-            cmd = media.build_command(input_path, tmp_out, profile, icq, info, settings)
+            cmd = media.build_command(input_path, tmp_out, profile, icq, info, settings,
+                                      vmaf_score=vmaf_score)
 
             last_write = 0.0
             last_applog = time.monotonic()

@@ -94,7 +94,6 @@ async function dashboard() {
 
 async function refreshDashboard() {
   const d = await api("/api/dashboard");
-  document.getElementById("version").textContent = "v" + d.status.version;
   const t = d.status.totals;
   const saved = (t.bytes_in || 0) - (t.bytes_out || 0);
   const pct = t.bytes_in ? (saved / t.bytes_in * 100).toFixed(1) : "0";
@@ -433,7 +432,10 @@ function profileCard(p) {
         p.audio_max_channels + "ch"}` : ""}</span>
       <span>${esc(p.container)}</span>
     </div>
-    <pre class="cmdline">${esc(p.command || "")}</pre>
+    <details class="cmd-details">
+      <summary>ffmpeg command</summary>
+      <pre class="cmdline">${esc(p.command || "")}</pre>
+    </details>
   </div>`;
 }
 

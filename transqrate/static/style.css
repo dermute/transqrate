@@ -52,7 +52,6 @@ html, body {
   letter-spacing: 0.3px;
 }
 .brand svg { flex-shrink: 0; }
-.brand .ver { font-size: 11px; font-weight: 400; color: var(--ink-3); margin-top: 3px; }
 .nav a {
   display: flex;
   align-items: center;
@@ -242,6 +241,16 @@ input:disabled, select:disabled { opacity: 0.4; cursor: not-allowed; }
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+.cmd-details { margin-top: 10px; }
+.cmd-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink-3);
+  user-select: none;
+}
+.cmd-details summary:hover { color: var(--ink); }
+.cmd-details .cmdline { margin-top: 8px; }
 
 .empty { color: var(--ink-3); padding: 26px; text-align: center; }
 .error-text { color: var(--bad); font-size: 12.5px; }
