@@ -50,6 +50,17 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
     vf = media.vf_args(profile)
     ref_filter = vf[1] if vf else None
 
+    # model auto-selection: the default vmaf model is calibrated for 1080p
+    # viewing and is systematically pessimistic on 4K frames; Netflix's 4K
+    # model applies only when the comparison itself happens at 4K (4K
+    # source AND no downscale below 4K)
+    v = next((s for s in info.get("streams", [])
+              if s.get("codec_type") == "video"), {})
+    src_w = int(v.get("width") or 0)
+    cap_w = media.RES_WIDTHS.get((profile.get("max_resolution") or "source"))
+    comparison_w = min(src_w, cap_w) if cap_w else src_w
+    model = "vmaf_4k_v0.6.1" if comparison_w >= 3000 else None
+
     workdir = config.TMP_DIR / f"vmaf_job_{job_id}"
     workdir.mkdir(parents=True, exist_ok=True)
     try:
@@ -57,7 +68,8 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
         if not samples:
             raise media.MediaError("could not extract any usable sample clips")
         log(f"vmaf search: target {target}, ICQ range [{icq_min}..{icq_max}], "
-            f"{len(samples)} samples of {sample_s}s")
+            f"{len(samples)} samples of {sample_s}s, "
+            f"model {model or 'vmaf_v0.6.1 (default)'}")
 
         cache: dict[int, tuple[float, float]] = {}
 
@@ -81,7 +93,7 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
                         f"sample encode failed at ICQ {q}: {proc.stderr.strip()[-800:]}")
                 log(f"    sample {i + 1}/{len(samples)}: encoded "
                     f"({enc.stat().st_size:,} B), computing VMAF...")
-                score = _vmaf_score(enc, sample, ref_filter)
+                score = _vmaf_score(enc, sample, ref_filter, model)
                 log(f"    sample {i + 1}/{len(samples)}: VMAF {score:.2f}")
                 scores.append(score)
                 in_bytes += sample.stat().st_size
@@ -141,17 +153,21 @@ def _extract_samples(input_path: Path, workdir: Path, duration: float,
 
 
 def _vmaf_score(distorted: Path, reference: Path,
-                ref_filter: str | None = None) -> float:
+                ref_filter: str | None = None,
+                model: str | None = None) -> float:
     threads = os.cpu_count() or 4
     # the distorted clip was encoded with the profile's scale filter; apply
     # the same filter to the reference so both are compared at output
     # resolution without any re-encoding
     r_chain = "setpts=PTS-STARTPTS" + (f",{ref_filter}" if ref_filter else "")
+    opts = f"n_threads={threads}"
+    if model:
+        opts = f"model=version={model}:{opts}"
     cmd = [config.FFMPEG, "-hide_banner", "-nostdin",
            "-i", str(distorted), "-i", str(reference),
            "-lavfi",
            f"[0:v]setpts=PTS-STARTPTS[d];[1:v]{r_chain}[r];"
-           f"[d][r]libvmaf=n_threads={threads}",
+           f"[d][r]libvmaf={opts}",
            "-f", "null", "-"]
     proc = media.run_quiet(cmd)
     match = VMAF_RE.search(proc.stderr or "")

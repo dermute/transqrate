@@ -115,6 +115,11 @@ compared at the output resolution — the score isolates codec fidelity
 instead of punishing the intentional resolution change (same approach as
 ab-av1's `--reference-vfilter` default).
 
+The VMAF model is chosen automatically: comparisons at 4K (4K source,
+no downscale) use Netflix's `vmaf_4k_v0.6.1` — the default 1080p model
+is several points too pessimistic on 4K frames. Everything at 1080p or
+below (including downscaled targets) uses the standard model.
+
 ## Profiles
 
 | Field | Meaning |
