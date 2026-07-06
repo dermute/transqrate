@@ -427,6 +427,7 @@ function profileCard(p) {
       <span>${esc(quality)}</span>
       <span>${p.max_resolution && p.max_resolution !== "source" ?
         "&le; " + esc(p.max_resolution) : "source resolution"}</span>
+      ${p.bit_depth === "8" ? "<span>8-bit</span>" : ""}
       <span>${esc(audio)}${p.audio_max_channels ? `, max ${
         { 8: "7.1", 7: "6.1", 6: "5.1", 2: "stereo", 1: "mono" }[p.audio_max_channels] ||
         p.audio_max_channels + "ch"}` : ""}</span>
@@ -444,7 +445,7 @@ function profileForm(prof) {
   const p = prof || {
     name: "", video_codec: "av1_qsv", preset: "veryslow", quality_mode: "icq",
     icq: 22, vmaf_target: 95, audio_codec: "libopus", audio_kbps_per_channel: 64,
-    audio_max_channels: 0, max_resolution: "source",
+    audio_max_channels: 0, max_resolution: "source", bit_depth: "source",
     container: "mkv", extra_video_args: "",
   };
   const resolutions = [["source", "Keep source"], ["2160p", "4K (2160p)"],
@@ -473,6 +474,11 @@ function profileForm(prof) {
       <label class="field"><span>Output resolution (downscale only)</span>
         <select name="max_resolution">${resolutions.map(([v, t]) =>
           `<option value="${v}" ${v === p.max_resolution ? "selected" : ""}>${t}</option>`).join("")}
+        </select></label>
+      <label class="field"><span>Bit depth</span>
+        <select name="bit_depth">
+          <option value="source" ${p.bit_depth !== "8" ? "selected" : ""}>Keep source (HDR-safe)</option>
+          <option value="8" ${p.bit_depth === "8" ? "selected" : ""}>Force 8-bit</option>
         </select></label>
       <label class="field"><span>Audio</span>
         <select name="audio_codec">
@@ -518,6 +524,7 @@ function profileForm(prof) {
       audio_kbps_per_channel: Number(f.get("audio_kbps_per_channel")) || 64,
       audio_max_channels: Number(f.get("audio_max_channels")) || 0,
       max_resolution: f.get("max_resolution"),
+      bit_depth: f.get("bit_depth"),
       container: f.get("container"),
       extra_video_args: f.get("extra_video_args").trim(),
     };

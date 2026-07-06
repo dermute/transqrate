@@ -63,6 +63,7 @@ class ProfileIn(BaseModel):
     audio_kbps_per_channel: int = Field(64, ge=16, le=512)
     audio_max_channels: int = Field(0, ge=0, le=8)  # 0 = keep all
     max_resolution: str = Field("source", pattern="^(source|480p|720p|1080p|2160p)$")
+    bit_depth: str = Field("source", pattern="^(source|8)$")
     container: str = Field("mkv", pattern="^(mkv|mp4)$")
     extra_video_args: str = ""
 
@@ -178,11 +179,11 @@ def create_profile(p: ProfileIn):
     pid = db.execute(
         "INSERT INTO profiles(name, video_codec, preset, quality_mode, icq, vmaf_target,"
         " audio_codec, audio_kbps_per_channel, audio_max_channels, max_resolution,"
-        " container, extra_video_args, created_at, updated_at)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        " bit_depth, container, extra_video_args, created_at, updated_at)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (p.name, p.video_codec, p.preset, p.quality_mode, p.icq, p.vmaf_target,
          p.audio_codec, p.audio_kbps_per_channel, p.audio_max_channels,
-         p.max_resolution, p.container, p.extra_video_args, ts, ts))
+         p.max_resolution, p.bit_depth, p.container, p.extra_video_args, ts, ts))
     return db.query_one("SELECT * FROM profiles WHERE id=?", (pid,))
 
 
@@ -196,10 +197,12 @@ def update_profile(profile_id: int, p: ProfileIn):
     db.execute(
         "UPDATE profiles SET name=?, video_codec=?, preset=?, quality_mode=?, icq=?,"
         " vmaf_target=?, audio_codec=?, audio_kbps_per_channel=?, audio_max_channels=?,"
-        " max_resolution=?, container=?, extra_video_args=?, updated_at=? WHERE id=?",
+        " max_resolution=?, bit_depth=?, container=?, extra_video_args=?, updated_at=?"
+        " WHERE id=?",
         (p.name, p.video_codec, p.preset, p.quality_mode, p.icq, p.vmaf_target,
          p.audio_codec, p.audio_kbps_per_channel, p.audio_max_channels,
-         p.max_resolution, p.container, p.extra_video_args, db.now(), profile_id))
+         p.max_resolution, p.bit_depth, p.container, p.extra_video_args,
+         db.now(), profile_id))
     return db.query_one("SELECT * FROM profiles WHERE id=?", (profile_id,))
 
 

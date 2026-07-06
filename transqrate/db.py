@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     audio_kbps_per_channel INTEGER NOT NULL DEFAULT 64,
     audio_max_channels INTEGER NOT NULL DEFAULT 0, -- 0 = keep all
     max_resolution TEXT NOT NULL DEFAULT 'source', -- source|480p|720p|1080p|2160p
+    bit_depth TEXT NOT NULL DEFAULT 'source',      -- source|8
     container TEXT NOT NULL DEFAULT 'mkv',
     extra_video_args TEXT NOT NULL DEFAULT '',
     created_at TEXT,
@@ -134,7 +135,10 @@ def connect() -> sqlite3.Connection:
 
 
 # column additions for databases created by older releases
-MIGRATIONS: list[tuple[str, str, str]] = []
+MIGRATIONS: list[tuple[str, str, str]] = [
+    ("profiles", "bit_depth",
+     "ALTER TABLE profiles ADD COLUMN bit_depth TEXT NOT NULL DEFAULT 'source'"),
+]
 
 
 def init() -> None:

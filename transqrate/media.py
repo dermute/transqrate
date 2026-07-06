@@ -19,18 +19,27 @@ OPUS_LAYOUT_LADDER = [("7.1", 8), ("6.1", 7), ("5.1", 6), ("5.0", 5),
 # scope (21:9) content lands at e.g. 1920x800 for "1080p"
 RES_WIDTHS = {"480p": 854, "720p": 1280, "1080p": 1920, "2160p": 3840}
 
+# bit_depth 'source' adds no filter: ffmpeg negotiates the encoder input
+# format from the decoded frames, so 10-bit HDR stays 10-bit (p010 for QSV)
+BIT_DEPTH_FORMATS = {"8": "nv12"}
+
 
 def opus_layouts(max_channels: int = 0) -> str:
     cap = max_channels or 8
     return "|".join(name for name, ch in OPUS_LAYOUT_LADDER if ch <= cap)
 
 
-def scale_args(profile: dict) -> list[str]:
-    """Downscale-only: never upscales smaller sources."""
+def vf_args(profile: dict) -> list[str]:
+    """Combined -vf chain: downscale-only resolution cap and/or forced
+    8-bit pixel format. Empty when the profile changes neither."""
+    filters = []
     width = RES_WIDTHS.get((profile.get("max_resolution") or "source"))
-    if not width:
-        return []
-    return ["-vf", f"scale=w='min({width},iw)':h=-2:flags=lanczos+accurate_rnd"]
+    if width:
+        filters.append(f"scale=w='min({width},iw)':h=-2:flags=lanczos+accurate_rnd")
+    fmt = BIT_DEPTH_FORMATS.get(str(profile.get("bit_depth") or "source"))
+    if fmt:
+        filters.append(f"format={fmt}")
+    return ["-vf", ",".join(filters)] if filters else []
 
 
 class MediaError(Exception):
@@ -129,7 +138,7 @@ def build_command(input_path: Path, output_path: Path, profile: dict,
 
 
 def video_args(profile: dict, icq: int) -> list[str]:
-    args = [*scale_args(profile), "-c:v", profile.get("video_codec", "av1_qsv")]
+    args = [*vf_args(profile), "-c:v", profile.get("video_codec", "av1_qsv")]
     if profile.get("preset"):
         args += ["-preset:v", profile["preset"]]
     # scoped to :v - unscoped global_quality would also hit audio encoders

@@ -43,12 +43,12 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
     # roughly one sample per 8 minutes, clamped
     n = max(n_min, min(n_max, int(duration // 480) or 1))
 
-    # if the profile downscales, the reference gets the identical scale
-    # filter (no re-encode, pure filtering) so both sides are compared at
-    # the output resolution and the score isolates codec fidelity - same
-    # approach as ab-av1's --reference-vfilter default
-    scale = media.scale_args(profile)
-    ref_filter = scale[1] if scale else None
+    # if the profile downscales or forces 8-bit, the reference gets the
+    # identical filter chain (no re-encode, pure filtering) so both sides
+    # are compared at the output resolution and bit depth - the score
+    # isolates codec fidelity, same as ab-av1's --reference-vfilter default
+    vf = media.vf_args(profile)
+    ref_filter = vf[1] if vf else None
 
     workdir = config.TMP_DIR / f"vmaf_job_{job_id}"
     workdir.mkdir(parents=True, exist_ok=True)

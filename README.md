@@ -119,6 +119,7 @@ ab-av1's `--reference-vfilter` default).
 | ICQ | QSV Intelligent Constant Quality, lower = better (default 22) |
 | VMAF target | e.g. 95 — auto-derives the ICQ per file |
 | Output resolution | keep source, or downscale to 480p/720p/1080p/4K (never upscales; width-based so scope content maps correctly) |
+| Bit depth | *keep source* (default; HDR content stays 10-bit) or *force 8-bit* |
 | Audio | Opus at N kbps × channel count (channels preserved), or copy |
 | Audio channel limit | optional downmix cap, e.g. *max 5.1* turns 7.1 into 5.1 but leaves stereo untouched |
 | Container | mkv (recommended) or mp4 |
@@ -139,6 +140,9 @@ Subtitles, chapters, metadata and (for mkv) font attachments are carried over;
   `TRANSQRATE_ICQ` and `TRANSQRATE_DATE` format tags.
 - **Watch**: every `scan_interval_s` (default 300 s) watched folders are
   scanned; unstable (still copying) files wait one more round.
+- **HDR**: with bit depth *keep source*, 10-bit and the PQ/HLG colorimetry
+  survive the encode (HDR10-compatible AV1 output). HDR10+ and Dolby
+  Vision *dynamic* metadata is not carried over.
 - **Crash safety**: encodes write to hidden `.…tqtmp.…` temp files that are
   atomically renamed on success and ignored by the scanner.
 
