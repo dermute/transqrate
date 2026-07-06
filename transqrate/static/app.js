@@ -475,9 +475,10 @@ function profileForm(prof) {
         <select name="max_resolution">${resolutions.map(([v, t]) =>
           `<option value="${v}" ${v === p.max_resolution ? "selected" : ""}>${t}</option>`).join("")}
         </select></label>
-      <label class="field"><span>Bit depth</span>
+      <label class="field" title="Keep source is recommended: AV1 compresses 10-bit material more efficiently (smoother gradients, less banding in HDR) - forcing 8-bit typically produces an even LARGER file at the same quality. Use force 8-bit only when a playback device cannot handle 10-bit.">
+        <span>Bit depth <span class="info-hint">&#9432;</span></span>
         <select name="bit_depth">
-          <option value="source" ${p.bit_depth !== "8" ? "selected" : ""}>Keep source (HDR-safe)</option>
+          <option value="source" ${p.bit_depth !== "8" ? "selected" : ""}>Keep source (HDR-safe, recommended)</option>
           <option value="8" ${p.bit_depth === "8" ? "selected" : ""}>Force 8-bit</option>
         </select></label>
       <label class="field"><span>Audio</span>
