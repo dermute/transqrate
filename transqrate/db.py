@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS sources (
     path TEXT NOT NULL UNIQUE,
     profile_id INTEGER NOT NULL REFERENCES profiles(id),
     output_path TEXT,                              -- NULL => transcode in place
+    delete_original INTEGER NOT NULL DEFAULT 1,    -- output-folder mode only
     watch INTEGER NOT NULL DEFAULT 0,
     enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT
@@ -138,6 +139,9 @@ def connect() -> sqlite3.Connection:
 MIGRATIONS: list[tuple[str, str, str]] = [
     ("profiles", "bit_depth",
      "ALTER TABLE profiles ADD COLUMN bit_depth TEXT NOT NULL DEFAULT 'source'"),
+    # DEFAULT 0 on purpose: pre-existing sources keep their originals
+    ("sources", "delete_original",
+     "ALTER TABLE sources ADD COLUMN delete_original INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

@@ -200,19 +200,28 @@ class Manager:
                         input_path.suffix)
                     try:
                         dest.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.move(str(input_path), str(dest))
-                        note = "output would be larger - original moved to output"
-                        log(f"moved original to {dest}")
+                        if source.get("delete_original"):
+                            shutil.move(str(input_path), str(dest))
+                            note = "output would be larger - original moved to output"
+                            log(f"moved original to {dest}")
+                        else:
+                            shutil.copy2(str(input_path), str(dest))
+                            note = "output would be larger - original copied to output"
+                            log(f"copied original to {dest}")
                     except OSError as exc:
-                        log(f"could not move original to output: {exc}")
+                        log(f"could not move/copy original to output: {exc}")
                 self._finish(job_id, "skipped", input_path, size_in=size_in, note=note)
                 return
 
             os.replace(tmp_out, final_out)
             in_place = not (source and source["output_path"])
-            if in_place and final_out != input_path:
+            if in_place:
+                if final_out != input_path:
+                    input_path.unlink()
+                    log(f"replaced original with {final_out.name}")
+            elif source and source.get("delete_original"):
                 input_path.unlink()
-                log(f"replaced original with {final_out.name}")
+                log("removed original after transcode")
 
             db.update_job(job_id, status="done", progress=100, finished_at=db.now(),
                           size_in=size_in, size_out=size_out, eta_s=0)

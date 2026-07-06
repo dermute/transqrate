@@ -196,10 +196,10 @@ async function sources() {
     <button class="primary" id="add-src">Add source folder</button>
     <h2>Configured folders</h2>
     <div class="tablewrap"><table>
-      <thead><tr><th>Folder</th><th>Profile</th><th>Output</th><th>Watch</th>
+      <thead><tr><th>Folder</th><th>Profile</th><th>Output</th><th>Originals</th><th>Watch</th>
         <th>Done</th><th>Saved</th><th>Active</th><th></th></tr></thead>
       <tbody>${srcs.length ? srcs.map(sourceRow).join("") :
-        `<tr><td colspan="8" class="empty">No source folders yet. Add one to get started.</td></tr>`}
+        `<tr><td colspan="9" class="empty">No source folders yet. Add one to get started.</td></tr>`}
       </tbody></table></div>
     <div id="src-files-slot"></div>
     <p class="inline-note">Paths are container paths - mount your media into the container
@@ -231,6 +231,7 @@ function sourceRow(s) {
     <td class="wrap">${esc(s.path)}</td>
     <td>${esc(s.profile_name)}</td>
     <td class="wrap">${s.output_path ? esc(s.output_path) : "<i>in place</i>"}</td>
+    <td>${!s.output_path ? "replaced" : (s.delete_original ? "delete" : "keep")}</td>
     <td>${s.watch ? "yes" : "no"}</td>
     <td class="num">${s.stats.done}</td>
     <td class="num">${fmtBytes(s.stats.saved)}</td>
@@ -301,7 +302,8 @@ async function sourceDetails(src) {
 
 function sourceForm(src) {
   const slot = document.getElementById("src-form-slot");
-  const s = src || { path: "", profile_id: state.profiles[0]?.id, output_path: "", watch: 0, enabled: 1 };
+  const s = src || { path: "", profile_id: state.profiles[0]?.id, output_path: "",
+    delete_original: 1, watch: 0, enabled: 1 };
   slot.innerHTML = `<form class="panel" id="src-form">
     <div class="grid">
       <label class="field"><span>Source folder (container path)</span>
@@ -318,10 +320,13 @@ function sourceForm(src) {
         <button type="button" class="small" style="margin-top:6px" data-browse="output_path">Browse&hellip;</button>
       </label>
       <div class="field"><span>&nbsp;</span>
-        <label class="check"><input type="checkbox" name="watch" ${s.watch ? "checked" : ""}>
+        <label class="check"><input type="checkbox" name="delete_original" ${s.delete_original ? "checked" : ""}>
+          Delete original after transcoding</label>
+        <label class="check" style="margin-top:8px"><input type="checkbox" name="watch" ${s.watch ? "checked" : ""}>
           Watch folder (queue new files automatically)</label>
         <label class="check" style="margin-top:8px"><input type="checkbox" name="enabled" ${s.enabled ? "checked" : ""}>
           Enabled</label>
+        <div class="inline-note">In-place sources (no output folder) always replace the original.</div>
       </div>
     </div>
     <div class="form-foot">
@@ -339,6 +344,7 @@ function sourceForm(src) {
       path: f.get("path").trim(),
       profile_id: Number(f.get("profile_id")),
       output_path: f.get("output_path").trim() || null,
+      delete_original: f.get("delete_original") === "on",
       watch: f.get("watch") === "on",
       enabled: f.get("enabled") === "on",
     };

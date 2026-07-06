@@ -72,6 +72,7 @@ class SourceIn(BaseModel):
     path: str = Field(min_length=1)
     profile_id: int
     output_path: str | None = None
+    delete_original: bool = True
     watch: bool = False
     enabled: bool = True
 
@@ -243,9 +244,10 @@ def create_source(s: SourceIn):
     if db.query_one("SELECT id FROM sources WHERE path=?", (s.path,)):
         raise HTTPException(409, "this folder is already configured")
     sid = db.execute(
-        "INSERT INTO sources(path, profile_id, output_path, watch, enabled, created_at)"
-        " VALUES(?,?,?,?,?,?)",
-        (s.path, s.profile_id, s.output_path or None, int(s.watch), int(s.enabled), db.now()))
+        "INSERT INTO sources(path, profile_id, output_path, delete_original, watch,"
+        " enabled, created_at) VALUES(?,?,?,?,?,?,?)",
+        (s.path, s.profile_id, s.output_path or None, int(s.delete_original),
+         int(s.watch), int(s.enabled), db.now()))
     return db.query_one("SELECT * FROM sources WHERE id=?", (sid,))
 
 
@@ -256,8 +258,10 @@ def update_source(source_id: int, s: SourceIn):
     if not db.query_one("SELECT id FROM profiles WHERE id=?", (s.profile_id,)):
         raise HTTPException(400, "unknown profile")
     db.execute(
-        "UPDATE sources SET path=?, profile_id=?, output_path=?, watch=?, enabled=? WHERE id=?",
-        (s.path, s.profile_id, s.output_path or None, int(s.watch), int(s.enabled), source_id))
+        "UPDATE sources SET path=?, profile_id=?, output_path=?, delete_original=?,"
+        " watch=?, enabled=? WHERE id=?",
+        (s.path, s.profile_id, s.output_path or None, int(s.delete_original),
+         int(s.watch), int(s.enabled), source_id))
     return db.query_one("SELECT * FROM sources WHERE id=?", (source_id,))
 
 

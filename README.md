@@ -75,10 +75,10 @@ folder:
 - **No output folder** — transcode *in place*: the finished file replaces
   the original (same location and name, container extension of the profile).
 - **With an output folder** (e.g. `/output`) — the source tree is mirrored
-  there (`/media/library/A/b.mkv` → `/output/A/b.mkv`) and originals are
-  kept untouched. If an encode would end up larger than the source, the
-  original is *moved* to the output folder instead, so the output tree
-  always holds every processed file.
+  there (`/media/library/A/b.mkv` → `/output/A/b.mkv`). The per-source
+  **"Delete original after transcoding"** toggle (on by default for new
+  sources) decides whether the source file is removed after a successful
+  encode or kept.
 
 ### Hardware requirements
 
@@ -138,10 +138,13 @@ Subtitles, chapters, metadata and (for mkv) font attachments are carried over;
 
 - **In place vs. output folder**: without an output folder the original is
   replaced (same name, profile's container extension). With an output folder
-  the source tree is mirrored there and originals are kept.
+  the source tree is mirrored there; the per-source *delete original* toggle
+  (default on for new sources) controls whether the source file is removed
+  after a successful encode.
 - **Skip if larger**: if the encode ends up bigger than the source, the result
-  is discarded; with an output folder configured the original is moved there
-  instead, so *every* processed file ends up in the output tree (configurable).
+  is discarded and the original is moved (delete original on) or copied
+  (off) to the output folder, so the output tree always holds every
+  processed file (configurable via `skip_if_larger`).
 - **Tagging**: outputs carry `TRANSQRATE=1`, `TRANSQRATE_PROFILE`,
   `TRANSQRATE_ICQ` and `TRANSQRATE_DATE` format tags.
 - **Watch**: every `scan_interval_s` (default 300 s) watched folders are
