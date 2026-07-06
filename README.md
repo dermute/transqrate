@@ -54,7 +54,7 @@ services:
       - /dev/dri:/dev/dri           # Intel GPU for QSV
     volumes:
       - ./config:/config            # database, logs, temp files
-      - /path/to/movies:/media/movies      # a source folder
+      - /path/to/media:/media/library      # a source folder
       - /path/to/transcoded:/output        # optional output folder
     restart: unless-stopped
 ```
