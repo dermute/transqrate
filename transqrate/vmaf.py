@@ -2,12 +2,13 @@
 
 Short sample clips are cut from across the file, encoded at candidate ICQ
 values, and scored against the source with libvmaf. A binary search finds the
-highest ICQ (= smallest file) whose mean sample VMAF still meets the target.
+highest ICQ (= smallest file) whose median sample VMAF still meets the target.
 """
 
 import os
 import re
 import shutil
+import statistics
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -101,10 +102,10 @@ def find_icq(input_path: Path, profile: dict, settings: dict, info: dict,
                 scores.append(score)
                 in_bytes += sample.stat().st_size
                 out_bytes += enc.stat().st_size
-            vmaf = sum(scores) / len(scores)
+            vmaf = statistics.median(scores)
             ratio = out_bytes / in_bytes if in_bytes else 1.0
             cache[q] = (vmaf, ratio)
-            log(f"  ICQ {q}: VMAF {vmaf:.2f} (samples: "
+            log(f"  ICQ {q}: median VMAF {vmaf:.2f} (samples: "
                 f"{', '.join(f'{s:.2f}' for s in scores)}), size ratio {ratio:.2%}")
             return vmaf, ratio
 
