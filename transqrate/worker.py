@@ -80,6 +80,13 @@ class Manager:
     def _register(self, job_id: int, proc: subprocess.Popen) -> None:
         with self._lock:
             self._procs[job_id] = proc
+        # cancel() may have run between the caller's cancel check and
+        # this registration - kill the fresh process right away then
+        if db.job_status(job_id) == "cancelling":
+            try:
+                proc.terminate()
+            except OSError:
+                pass
 
     def _unregister(self, job_id: int) -> None:
         with self._lock:
@@ -155,7 +162,8 @@ class Manager:
                 log("quality mode: VMAF target - searching for matching ICQ")
                 result = vmaf.find_icq(input_path, profile, settings, info,
                                        job_id, log, cancel_check=cancelled,
-                                       on_cmd=lambda c: self._set_cmd(job_id, c))
+                                       on_cmd=lambda c: self._set_cmd(job_id, c),
+                                       on_spawn=lambda p: self._register(job_id, p))
                 icq = result.icq
                 vmaf_score = round(result.vmaf, 2)
                 db.update_job(job_id, chosen_icq=icq, vmaf_score=vmaf_score)
@@ -250,6 +258,14 @@ class Manager:
             db.update_job(job_id, status="cancelled", finished_at=db.now())
             db.set_file_state(str(input_path), "candidate")
         except Exception as exc:
+            if cancelled():
+                # a subprocess we terminated on cancel surfaces as a
+                # generic failure - classify it as the cancellation it is
+                log("job cancelled")
+                logger.info("job %d: cancelled", job_id)
+                db.update_job(job_id, status="cancelled", finished_at=db.now())
+                db.set_file_state(str(input_path), "candidate")
+                return
             log("ERROR: " + str(exc))
             log(traceback.format_exc())
             logger.error("job %d: failed - %s", job_id, exc)

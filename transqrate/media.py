@@ -192,8 +192,19 @@ def run_ffmpeg(cmd: list[str], log_fh, duration: float | None = None,
     return proc.returncode
 
 
-def run_quiet(cmd: list[str], timeout: int = 3600) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+def run_quiet(cmd: list[str], timeout: int = 3600,
+              on_spawn=None) -> subprocess.CompletedProcess:
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True)
+    if on_spawn:
+        on_spawn(proc)
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.communicate()
+        raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
 
 # example file used to render a representative command line for a profile:
