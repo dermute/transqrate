@@ -1,0 +1,8 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+umask "${UMASK:-022}"
+cd /opt/transqrate || exit 1
+exec s6-setuidgid abc \
+    python3 -m uvicorn transqrate.main:app \
+    --host 0.0.0.0 --port 8585 --no-access-log

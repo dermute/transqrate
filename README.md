@@ -47,7 +47,6 @@ services:
   transqrate:
     image: ghcr.io/dermute/transqrate:latest
     container_name: transqrate
-    init: true
     ports:
       - "8585:8585"
     devices:
@@ -56,6 +55,10 @@ services:
       - ./config:/config            # database, logs, temp files
       - /path/to/media:/media/library      # a source folder
       - /path/to/transcoded:/output        # optional output folder
+    environment:
+      - PUID=1000                   # files on the volumes are written as
+      - PGID=1000                   # this user/group ...
+      - UMASK=022                   # ... with these permissions
     restart: unless-stopped
 ```
 
@@ -65,6 +68,24 @@ docker compose up -d
 
 Open **http://localhost:8585**, add `/media/library` as a source, pick a
 profile, press **Scan now**.
+
+### User / group / permissions
+
+The container starts as root (as Portainer & friends do), then drops to an
+unprivileged user before running the app — the familiar
+[linuxserver.io](https://docs.linuxserver.io/general/understanding-puid-and-pgid/)
+mechanism, since the image is built on their s6-overlay base:
+
+- **`PUID` / `PGID`** (default `911`): everything the app writes to the
+  volumes — transcoded files, database, logs — is owned by this uid/gid.
+  Match them to the owner of your media folders (`id youruser`).
+- **`UMASK`** (default `022`): permission mask for created files
+  (`022` → `644`, `002` → group-writable `664`).
+- `/config` is chowned to `PUID:PGID` on start; GPU access is set up
+  automatically (the user is added to the group owning `/dev/dri/*`).
+
+Don't add `init: true` / `--init`: the image's s6 init must be PID 1 and
+already reaps ffmpeg children itself.
 
 ### Source & output folders
 

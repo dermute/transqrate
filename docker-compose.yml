@@ -3,7 +3,8 @@ services:
     image: ghcr.io/dermute/transqrate:latest
     # build: .                     # uncomment to build from source instead
     container_name: transqrate
-    init: true                     # reap ffmpeg children, forward signals
+    # no "init: true" here - the image's s6-overlay init must be PID 1;
+    # it reaps ffmpeg children and forwards signals itself
     ports:
       - "8585:8585"
     devices:
@@ -24,4 +25,10 @@ services:
       - /path/to/transcoded:/output
     environment:
       - TZ=Europe/Berlin
+      # the app and its ffmpeg processes run as this user, so everything
+      # written to the volumes (transcodes, database, logs) gets exactly
+      # these owners and permissions:
+      - PUID=1000                  # user id owning created files
+      - PGID=1000                  # group id owning created files
+      - UMASK=022                  # e.g. 022 -> files 644, 002 -> group-writable
     restart: unless-stopped

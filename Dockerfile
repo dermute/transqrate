@@ -14,15 +14,20 @@ COPY requirements.txt /opt/transqrate/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages -r /opt/transqrate/requirements.txt
 
 COPY transqrate /opt/transqrate/transqrate
+# s6 services: run the app as the "abc" user (remapped to PUID/PGID by the
+# base image's init) and chown /config to it on start
+COPY root/ /
 
 ENV CONFIG_DIR=/config \
     PYTHONUNBUFFERED=1 \
-    PORT=8585
+    PORT=8585 \
+    ATTACHED_DEVICES_PERMS=/dev/dri
 
 WORKDIR /opt/transqrate
 VOLUME /config
 EXPOSE 8585
 
-# the base image's entrypoint is ffmpeg itself - replace it with the app
-ENTRYPOINT []
-CMD ["python3", "-m", "uvicorn", "transqrate.main:app", "--host", "0.0.0.0", "--port", "8585", "--no-access-log"]
+# the base image's entrypoint is ffmpeg itself - use its s6-overlay init
+# instead, which applies PUID/PGID/UMASK and GPU device permissions before
+# starting the app (do not combine with docker's --init / init: true)
+ENTRYPOINT ["/init"]
